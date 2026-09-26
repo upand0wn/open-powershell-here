@@ -9,17 +9,14 @@ Open your computer's native terminal directly from Obsidian without typing `cd <
 
 ---
 
-> 💡 **Notice for Linux Users:**  
-> The author actively uses and thoroughly tests the plugin with **[Ghostty](https://ghostty.org/) on Arch Linux**, and strongly recommends **Ghostty**. Other common Linux terminals (Ptyxis, GNOME Terminal, GNOME Console, Konsole, Alacritty, Kitty, WezTerm, etc.) are also supported.
-
----
-
 ## 💻 Supported Platforms & Terminals
 
-| Operating System | Default Terminal | Notes |
+| Operating System | Terminal | Notes |
 | :--- | :--- | :--- |
 | **Windows** | **PowerShell 7+** | Hosted in modern Windows Terminal |
-| **Linux** | **Ghostty** (Recommended) / Others | On Ubuntu 25.10+ / 26.04 the system default terminal (Ptyxis) is used automatically; choose your preferred terminal in settings |
+| **Linux** | **Auto-detected** | On Ubuntu 25.10+ / 26.04, the system default terminal (Ptyxis) is used automatically |
+
+On Linux the plugin detects an installed terminal automatically, including Ghostty, GNOME Terminal, GNOME Console, Konsole, Alacritty, Kitty, WezTerm, XFCE4 Terminal, and Foot. To always use a specific one, select it under **Style Settings → Preferred Terminal**.
 
 ---
 

@@ -9,17 +9,14 @@
 
 ---
 
-> 💡 **Linux 用户特别提示：**  
-> 作者日常在 **Arch Linux** 上主力使用 **[Ghostty](https://ghostty.org/)** 终端，并完成了深度实测，强烈推荐使用 **Ghostty**；插件同时也兼容 Ptyxis、GNOME Terminal、GNOME Console、Konsole、Alacritty、Kitty、WezTerm 等常见终端。
-
----
-
 ## 💻 支持的系统与终端
 
-| 操作系统 | 默认打开的终端 | 备注 |
+| 操作系统 | 终端 | 备注 |
 | :--- | :--- | :--- |
 | **Windows** | **PowerShell 7+** | 默认使用 Windows Terminal 窗口打开 |
-| **Linux** | **Ghostty**（推荐）/ 其他终端 | Ubuntu 25.10+ / 26.04 会自动跟随系统默认终端（Ptyxis）；也可在设置中自由选择 |
+| **Linux** | **自动检测** | Ubuntu 25.10+ / 26.04 自动使用系统默认终端（Ptyxis） |
+
+Linux 下插件会自动检测本机已安装的终端，支持 Ghostty、GNOME Terminal、GNOME Console、Konsole、Alacritty、Kitty、WezTerm、XFCE4 Terminal、Foot 等。如需固定使用某一个，可在 **Style Settings → Preferred Terminal** 中选择。
 
 ---
 
