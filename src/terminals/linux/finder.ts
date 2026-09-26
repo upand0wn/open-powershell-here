@@ -21,6 +21,16 @@ async function defaultCheckExecutable(filePath: string): Promise<boolean> {
   }
 }
 
+function matchesPreferredTerminal(spec: LinuxTerminalSpec, normalizedPreferred: string): boolean {
+  if (spec.id.toLowerCase() === normalizedPreferred) {
+    return true;
+  }
+  if (spec.binary.toLowerCase() === normalizedPreferred) {
+    return true;
+  }
+  return (spec.aliases ?? []).some((alias) => alias.toLowerCase() === normalizedPreferred);
+}
+
 export class LinuxTerminalFinder implements TerminalFinder {
   private verified: ResolvedTerminal | null = null;
   private currentPreferredId: string | null = null;
@@ -95,9 +105,7 @@ export class LinuxTerminalFinder implements TerminalFinder {
     // If user has a preferred terminal, attempt to find that one first
     if (preferredId !== null && preferredId !== undefined && preferredId !== 'auto' && preferredId !== '') {
       const normalizedPreferred = preferredId.toLowerCase().replace(/^terminal-choice-/, '');
-      const match = this.deps.specs.find(
-        (s) => s.id.toLowerCase() === normalizedPreferred || s.binary.toLowerCase() === normalizedPreferred,
-      );
+      const match = this.deps.specs.find((s) => matchesPreferredTerminal(s, normalizedPreferred));
       if (match !== undefined) {
         for (const dir of dirs) {
           const fullPath = join(dir, match.binary);

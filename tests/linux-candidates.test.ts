@@ -8,6 +8,10 @@ describe('LINUX_TERMINALS', () => {
     expect(LINUX_TERMINALS[0].binary).toBe('ghostty');
   });
 
+  it('places the system default terminal right after Ghostty', () => {
+    expect(LINUX_TERMINALS[1].id).toBe('xdg-terminal-exec');
+  });
+
   it('builds proper working directory argument for Ghostty', () => {
     const ghostty = LINUX_TERMINALS.find((t) => t.id === 'ghostty');
     expect(ghostty).toBeDefined();
@@ -54,6 +58,43 @@ describe('LINUX_TERMINALS', () => {
     expect(gnome?.buildArgs('/home/user/vault')).toEqual([
       '--working-directory=/home/user/vault',
     ]);
+  });
+
+  it('builds proper arguments for Ptyxis (new window + working directory)', () => {
+    const ptyxis = LINUX_TERMINALS.find((t) => t.id === 'ptyxis');
+    expect(ptyxis).toBeDefined();
+    expect(ptyxis?.binary).toBe('ptyxis');
+    expect(ptyxis?.buildArgs('/home/user/vault')).toEqual([
+      '--new-window',
+      '--working-directory=/home/user/vault',
+    ]);
+  });
+
+  it('builds proper working directory argument for the system default terminal', () => {
+    const systemDefault = LINUX_TERMINALS.find((t) => t.id === 'xdg-terminal-exec');
+    expect(systemDefault?.binary).toBe('xdg-terminal-exec');
+    expect(systemDefault?.buildArgs('/home/user/vault')).toEqual([
+      '--dir=/home/user/vault',
+    ]);
+  });
+
+  it('builds proper working directory argument for GNOME Console', () => {
+    const kgx = LINUX_TERMINALS.find((t) => t.id === 'kgx');
+    expect(kgx?.binary).toBe('kgx');
+    expect(kgx?.buildArgs('/home/user/vault')).toEqual([
+      '--working-directory=/home/user/vault',
+    ]);
+  });
+
+  it('prefers Ptyxis over GNOME Terminal on Ubuntu', () => {
+    const ids = LINUX_TERMINALS.map((t) => t.id);
+    expect(ids.indexOf('ptyxis')).toBeGreaterThan(-1);
+    expect(ids.indexOf('ptyxis')).toBeLessThan(ids.indexOf('gnome-terminal'));
+  });
+
+  it('keeps legacy aliases for the preferred-terminal setting', () => {
+    expect(LINUX_TERMINALS.find((t) => t.id === 'gnome-terminal')?.aliases).toContain('gnome');
+    expect(LINUX_TERMINALS.find((t) => t.id === 'xfce4-terminal')?.aliases).toContain('xfce4');
   });
 
   it('builds proper working directory argument for Foot', () => {

@@ -7,4 +7,10 @@ export interface LinuxTerminalSpec {
   readonly displayName: string;
   readonly binary: string;
   readonly buildArgs: (targetDir: string) => string[];
+  /**
+   * Additional identifiers matched against the preferred-terminal setting.
+   * Used for legacy Style Settings class values (for example `gnome` and
+   * `xfce4`) that predate the full terminal ids.
+   */
+  readonly aliases?: readonly string[];
 }

@@ -10,7 +10,7 @@
 ---
 
 > 💡 **Linux 用户特别提示：**  
-> 作者日常在 **Arch Linux** 上主力使用 **[Ghostty](https://ghostty.org/)** 终端，并完成了深度实测，强烈推荐使用 **Ghostty**；插件同时也兼容 Konsole、Alacritty、Kitty、WezTerm 等常见终端。
+> 作者日常在 **Arch Linux** 上主力使用 **[Ghostty](https://ghostty.org/)** 终端，并完成了深度实测，强烈推荐使用 **Ghostty**；插件同时也兼容 Ptyxis、GNOME Terminal、GNOME Console、Konsole、Alacritty、Kitty、WezTerm 等常见终端。
 
 ---
 
@@ -19,7 +19,7 @@
 | 操作系统 | 默认打开的终端 | 备注 |
 | :--- | :--- | :--- |
 | **Windows** | **PowerShell 7+** | 默认使用 Windows Terminal 窗口打开 |
-| **Linux** | **Ghostty**（推荐）/ 其他终端 | 若安装了多个终端，可在设置中自由选择 |
+| **Linux** | **Ghostty**（推荐）/ 其他终端 | Ubuntu 25.10+ / 26.04 会自动跟随系统默认终端（Ptyxis）；也可在设置中自由选择 |
 
 ---
 
@@ -40,7 +40,7 @@
 如果你安装了 [Style Settings](https://obsidian.md/plugins?id=obsidian-style-settings) 插件，可以在其设置面板中进行个性化定制：
 
 - **隐藏侧边栏图标**：不想看到左侧的终端图标时可一键隐藏（右键菜单功能不受影响）。
-- **终端选择（Linux）**：当电脑中安装了多个终端软件时，自由指定优先打开哪一个（如 Ghostty、Konsole 等）。
+- **终端选择（Linux）**：当电脑中安装了多个终端软件时，自由指定优先打开哪一个（如 Ghostty、Ptyxis、Konsole 等）。
 
 ---
 

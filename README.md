@@ -10,7 +10,7 @@ Open your computer's native terminal directly from Obsidian without typing `cd <
 ---
 
 > 💡 **Notice for Linux Users:**  
-> The author actively uses and thoroughly tests the plugin with **[Ghostty](https://ghostty.org/) on Arch Linux**, and strongly recommends **Ghostty**. Other common Linux terminals (Konsole, Alacritty, Kitty, WezTerm, GNOME Terminal, etc.) are also supported.
+> The author actively uses and thoroughly tests the plugin with **[Ghostty](https://ghostty.org/) on Arch Linux**, and strongly recommends **Ghostty**. Other common Linux terminals (Ptyxis, GNOME Terminal, GNOME Console, Konsole, Alacritty, Kitty, WezTerm, etc.) are also supported.
 
 ---
 
@@ -19,7 +19,7 @@ Open your computer's native terminal directly from Obsidian without typing `cd <
 | Operating System | Default Terminal | Notes |
 | :--- | :--- | :--- |
 | **Windows** | **PowerShell 7+** | Hosted in modern Windows Terminal |
-| **Linux** | **Ghostty** (Recommended) / Others | Choose your preferred terminal in settings |
+| **Linux** | **Ghostty** (Recommended) / Others | On Ubuntu 25.10+ / 26.04 the system default terminal (Ptyxis) is used automatically; choose your preferred terminal in settings |
 
 ---
 
@@ -40,7 +40,7 @@ In the left file tree:
 If you use the [Style Settings](https://obsidian.md/plugins?id=obsidian-style-settings) plugin, you can easily customize:
 
 - **Hide Ribbon Button**: Hide the left ribbon icon if you only want the right-click menu.
-- **Terminal Selection (Linux)**: Select your preferred terminal (Ghostty, Konsole, etc.) when multiple terminals are installed.
+- **Terminal Selection (Linux)**: Select your preferred terminal (Ghostty, Ptyxis, Konsole, etc.) when multiple terminals are installed.
 
 ---
 

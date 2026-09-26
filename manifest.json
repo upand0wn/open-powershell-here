@@ -3,7 +3,7 @@
   "name": "Native Terminal Here",
   "version": "0.5.1",
   "minAppVersion": "1.0.0",
-  "description": "Open a native terminal (PowerShell on Windows, Ghostty / other terminals on Linux) at the vault root or any folder/file.",
+  "description": "Open a native terminal (PowerShell on Windows, Ghostty / Ptyxis / other terminals on Linux) at the vault root or any folder/file.",
   "author": "ethanffu",
   "isDesktopOnly": true,
   "authorUrl": "https://github.com/ethanffu"

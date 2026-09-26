@@ -333,6 +333,15 @@ var LINUX_TERMINALS = [
     buildArgs: (dir) => [`--working-directory=${dir}`]
   },
   {
+    id: "xdg-terminal-exec",
+    displayName: "System Default (xdg-terminal-exec)",
+    binary: "xdg-terminal-exec",
+    // Resolves the user's configured default terminal and forwards the
+    // working directory, e.g. on Ubuntu 26.04 this runs
+    // `ptyxis --new-window --working-directory <dir>`.
+    buildArgs: (dir) => [`--dir=${dir}`]
+  },
+  {
     id: "alacritty",
     displayName: "Alacritty",
     binary: "alacritty",
@@ -357,16 +366,34 @@ var LINUX_TERMINALS = [
     buildArgs: (dir) => ["--workdir", dir]
   },
   {
+    id: "ptyxis",
+    displayName: "Ptyxis",
+    binary: "ptyxis",
+    // `--new-window` is required so an already running Ptyxis instance opens
+    // a new window at the target directory instead of focusing an existing
+    // window and dropping the working directory.
+    buildArgs: (dir) => ["--new-window", `--working-directory=${dir}`]
+  },
+  {
     id: "gnome-terminal",
     displayName: "GNOME Terminal",
     binary: "gnome-terminal",
-    buildArgs: (dir) => [`--working-directory=${dir}`]
+    buildArgs: (dir) => [`--working-directory=${dir}`],
+    aliases: ["gnome"]
+  },
+  {
+    id: "kgx",
+    displayName: "GNOME Console",
+    binary: "kgx",
+    buildArgs: (dir) => [`--working-directory=${dir}`],
+    aliases: ["gnome-console"]
   },
   {
     id: "xfce4-terminal",
     displayName: "XFCE4 Terminal",
     binary: "xfce4-terminal",
-    buildArgs: (dir) => [`--working-directory=${dir}`]
+    buildArgs: (dir) => [`--working-directory=${dir}`],
+    aliases: ["xfce4"]
   },
   {
     id: "foot",
@@ -390,6 +417,16 @@ async function defaultCheckExecutable(filePath) {
   } catch (e) {
     return false;
   }
+}
+function matchesPreferredTerminal(spec, normalizedPreferred) {
+  var _a;
+  if (spec.id.toLowerCase() === normalizedPreferred) {
+    return true;
+  }
+  if (spec.binary.toLowerCase() === normalizedPreferred) {
+    return true;
+  }
+  return ((_a = spec.aliases) != null ? _a : []).some((alias) => alias.toLowerCase() === normalizedPreferred);
 }
 var LinuxTerminalFinder = class {
   constructor(deps) {
@@ -456,9 +493,7 @@ var LinuxTerminalFinder = class {
     const dirs = pathEnv.split(":").filter(Boolean);
     if (preferredId !== null && preferredId !== void 0 && preferredId !== "auto" && preferredId !== "") {
       const normalizedPreferred = preferredId.toLowerCase().replace(/^terminal-choice-/, "");
-      const match = this.deps.specs.find(
-        (s) => s.id.toLowerCase() === normalizedPreferred || s.binary.toLowerCase() === normalizedPreferred
-      );
+      const match = this.deps.specs.find((s) => matchesPreferredTerminal(s, normalizedPreferred));
       if (match !== void 0) {
         for (const dir of dirs) {
           const fullPath = (0, import_node_path2.join)(dir, match.binary);
@@ -653,7 +688,7 @@ var MENU_ITEM_ICON = "terminal";
 var NOTICE_UNSUPPORTED_PLATFORM = "Open Terminal Here currently supports Windows and Linux.";
 var NOTICE_NO_VAULT_PATH = "Unable to resolve the local vault path.";
 var NOTICE_NOT_FOUND_WINDOWS = "PowerShell 7 or later was not found. Install PowerShell and restart Obsidian.";
-var NOTICE_NOT_FOUND_LINUX = "No supported terminal emulator was found. Install Ghostty (recommended) or another supported terminal.";
+var NOTICE_NOT_FOUND_LINUX = "No supported terminal emulator was found. Install Ghostty (recommended), Ptyxis, or another supported terminal.";
 var NOTICE_START_FAILED = "Terminal could not be started. Check the developer console for details.";
 var NOTICE_SEMICOLON = "PowerShell cannot be opened for paths containing a semicolon (;).";
 var VaultTerminalPlugin = class extends import_obsidian2.Plugin {

@@ -32,6 +32,9 @@ settings:
                 label: 'Ghostty'
                 value: terminal-choice-ghostty
             -
+                label: 'System Default (xdg-terminal-exec)'
+                value: terminal-choice-xdg-terminal-exec
+            -
                 label: 'Konsole'
                 value: terminal-choice-konsole
             -
@@ -44,11 +47,17 @@ settings:
                 label: 'WezTerm'
                 value: terminal-choice-wezterm
             -
+                label: 'Ptyxis'
+                value: terminal-choice-ptyxis
+            -
                 label: 'GNOME Terminal'
-                value: terminal-choice-gnome
+                value: terminal-choice-gnome-terminal
+            -
+                label: 'GNOME Console'
+                value: terminal-choice-kgx
             -
                 label: 'XFCE4 Terminal'
-                value: terminal-choice-xfce4
+                value: terminal-choice-xfce4-terminal
             -
                 label: 'Foot'
                 value: terminal-choice-foot

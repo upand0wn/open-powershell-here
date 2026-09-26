@@ -1,6 +1,6 @@
-# MANUAL_TESTS.md — 真实 Windows 人工验收清单
+# MANUAL_TESTS.md — 真实 Windows / Linux 人工验收清单
 
-本文件记录需要在真实 Windows 桌面 + 真实 Obsidian 中人工执行的验收项，以及本机已完成的脚本化平台实验结论。
+本文件记录需要在真实 Windows / Linux 桌面 + 真实 Obsidian 中人工执行的验收项，以及本机已完成的脚本化平台实验结论。
 
 ## 当前状态
 
@@ -17,6 +17,7 @@ context-menu entry manually verified (core items); edge items pending
 - **尚未真实验收的边缘项**：分号文件夹报错（#31）、vault 根文件夹右键（#28）、普通文件右键不显示（#29）、特殊字符子文件夹（#30）、插件重载无重复项（#32）、Ribbon 与右键交替（#33）、Style Settings 隐藏 Ribbon（#34）等仍为“未执行”，不得把自动化测试当作真实 GUI 验收。
   - #34 实测记录：用户开启 **Hide the ribbon button** 后按钮**未隐藏**（v0.3.0 与 v0.3.1 两版均撤销）。**真实根因**（读 Style Settings 源码确认）：`class-toggle` 加到 `<body>` 的是**设置项 `id`**，`addClass` 属性被新版忽略——此前选择器与 body 类名不匹配。修复：设置项 `id` 即类名、CSS 双选择器（自定义 class + tooltip `aria-label`）+ `!important`、`main.ts` MutationObserver 内联样式强制隐藏。**2026-08-10 用户实机复验：开关可正常隐藏/恢复按钮，已通过（随 v0.4.0 发布）。**
 - 剩余低优先级项（特殊字符 vault 路径、wt 缺失回退、UNC、未安装场景等）未在用户环境逐一验证，见下方清单。
+- **Linux / Ubuntu 支持（2026-09-26 新增，待真机验收）**：新增 `xdg-terminal-exec`（Ubuntu 25.10+/26.04 系统默认终端机制）、Ptyxis、GNOME Console (`kgx`) 候选，并修复 Style Settings 中 `gnome` / `xfce4` 首选值不生效的问题；对应 Linux 人工清单（L1–L8）均未执行，见文末。
 - 脚本化 Windows 平台实验：已执行（2026-08-06/08，Windows 桌面会话 + pwsh 7.6.4 MSIX + Node 24.16.0），结论见下。
 
 ## 人工验收步骤（准备）
@@ -94,8 +95,30 @@ context-menu entry manually verified (core items); edge items pending
 - **授权范围**：用户 2026-08-08 明确接受“放宽约束换取可靠新窗口”的建议；变更仅限于把 `wt.exe` 作为窗口宿主（不代理/监听/记录 I/O，目标路径仍为独立 `-WorkingDirectory` 参数）。`cmd.exe`、`powershell.exe`、`conhost.exe`、`start`、`shell:true` 等仍被禁止。
 - 若未来约束再次收紧，可在不改变插件其余设计的前提下替换 `launcher.ts`。
 
+## Linux / Ubuntu 人工验收清单（2026-09-26 新增）
+
+背景：Ubuntu 25.10+ / 26.04 LTS 的默认终端已由 GNOME Terminal 换为 **Ptyxis**，默认终端选择机制为 `xdg-terminal-exec`（配置：`~/.config/ubuntu-xdg-terminals.list` 或 `/usr/share/xdg-terminal-exec/ubuntu-xdg-terminals.list`）。插件现按 `ghostty → xdg-terminal-exec → … → ptyxis → gnome-terminal → kgx → …` 的顺序自动选择。
+
+准备：真实 Ubuntu 桌面 + 真实 Obsidian（本机为 .deb 安装，无沙箱问题；Snap/Flatpak 版本未验证），使用项目内 `.test-vault`；`npm ci && npm run build && npm run install:test` 后用 Obsidian 打开 `.test-vault` 并启用插件。
+
+| # | 项目 | 步骤 | 预期 | 状态 |
+| --- | --- | --- | --- | --- |
+| L1 | Auto 使用系统默认终端 | Style Settings 保持 Auto-detect，点击 Ribbon | 打开系统默认终端（Ubuntu 26.04 为 Ptyxis）且目录为 vault 根 | 未执行 |
+| L2 | 右键文件夹目录正确 | 右键 `.test-vault` 下嵌套文件夹 → `Open Terminal here`，终端内执行 `pwd` | 等于该文件夹真实绝对路径 | 未执行 |
+| L3 | 右键文件指向父目录 | 右键普通笔记 → 菜单项，终端内执行 `pwd` | 等于该文件所在目录 | 未执行 |
+| L4 | Ptyxis 已运行时新开窗口 | 先手动打开一个 Ptyxis 窗口，再点击 Ribbon | 新开 Ptyxis 窗口且目录为 vault 根（不是聚焦旧窗口、不是 home） | 未执行 |
+| L5 | 特殊字符路径 | vault 或子文件夹路径含空格/中文/`&`/括号/单引号 | 均正确打开到目标目录 | 未执行 |
+| L6 | 手动选择终端 | Style Settings → Preferred Terminal 依次选择 Ptyxis、GNOME Terminal 等 | 按选择打开；旧值 `terminal-choice-gnome` / `terminal-choice-xfce4` 仍生效 | 未执行 |
+| L7 | 未找到终端提示 | 临时清空 PATH 后点击入口（或依赖自动化测试） | Notice：`No supported terminal emulator was found. Install Ghostty (recommended), Ptyxis, or another supported terminal.` | 未执行（自动化测试覆盖） |
+| L8 | Ubuntu 24.04 回归 | Ubuntu 24.04 + GNOME Terminal 重复 L1/L2 | gnome-terminal 正常打开且目录正确 | 未执行 |
+
+已确认的实机事实（2026-09-26，Ubuntu 26.04.1 LTS，Ptyxis 50.1）：
+
+- `xdg-terminal-exec --print-cmd --dir=<dir>` 实际输出 `ptyxis --new-window --working-directory <dir>`（与插件的 `ptyxis` 直接候选参数一致）。
+- `/usr/bin/x-terminal-emulator` 在该版本指向 `/usr/bin/ptyxis`；旧版插件会经兜底启动 ptyxis 但不带工作目录参数，可能落在 home。
+
 ## 记录格式
 
 完成某项后，把状态改为 `通过` 并注明日期与机器信息；新增发现追加到“平台行为发现”。
 
-当前（2026-08-10）：Ribbon 入口的核心项与主要扩展项已通过真实 GUI 验收；文件夹右键菜单入口的核心流程（#25–#27）用户已实测通过；Style Settings 隐藏 Ribbon（#34）已由用户实机复验通过（v0.3.0/v0.3.1 两版曾失效并撤销，根因为 class-toggle 的 body 类名取设置项 `id`，修复后随 v0.4.0 发布）。**分号报错（#31）等边缘项仍未在真实 Obsidian 中执行**（#28–#33 中除 #25–#27 外均为“未执行”）。剩余未执行项均为低优先级/罕见场景（特殊字符路径的实机验证、wt 缺失回退、UNC、未安装场景），其中多项已有脚本化实验或自动化测试覆盖。
+当前（2026-08-10）：Ribbon 入口的核心项与主要扩展项已通过真实 GUI 验收；文件夹右键菜单入口的核心流程（#25–#27）用户已实测通过；Style Settings 隐藏 Ribbon（#34）已由用户实机复验通过（v0.3.0/v0.3.1 两版曾失效并撤销，根因为 class-toggle 的 body 类名取设置项 `id`，修复后随 v0.4.0 发布）。**分号报错（#31）等边缘项仍未在真实 Obsidian 中执行**（#28–#33 中除 #25–#27 外均为“未执行”）。剩余未执行项均为低优先级/罕见场景（特殊字符路径的实机验证、wt 缺失回退、UNC、未安装场景），其中多项已有脚本化实验或自动化测试覆盖。Linux/Ubuntu 侧（2026-09-26 新增 Ptyxis / xdg-terminal-exec / GNOME Console 支持）尚未在真实 Obsidian 中验收，见文末 Linux 清单。

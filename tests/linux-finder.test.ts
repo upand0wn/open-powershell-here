@@ -47,6 +47,33 @@ describe('LinuxTerminalFinder', () => {
     expect(resolved?.binaryPath).toBe('/usr/bin/konsole');
   });
 
+  it('resolves legacy preferred-terminal aliases (Style Settings values)', async () => {
+    const specs: LinuxTerminalSpec[] = [
+      { id: 'ghostty', displayName: 'Ghostty', binary: 'ghostty', buildArgs: (d) => [d] },
+      {
+        id: 'gnome-terminal',
+        displayName: 'GNOME Terminal',
+        binary: 'gnome-terminal',
+        buildArgs: (d) => [d],
+        aliases: ['gnome'],
+      },
+    ];
+    const checkExecutable = vi.fn().mockImplementation(async (path: string) => {
+      return path === '/usr/bin/gnome-terminal';
+    });
+
+    const finder = new LinuxTerminalFinder({
+      specs,
+      checkExecutable,
+      env: { PATH: '/usr/bin' },
+    });
+
+    finder.setPreferredTerminal('terminal-choice-gnome');
+    const resolved = await finder.resolve();
+    expect(resolved?.id).toBe('gnome-terminal');
+    expect(resolved?.binaryPath).toBe('/usr/bin/gnome-terminal');
+  });
+
   it('falls back to default priority order when preferred terminal is not installed', async () => {
     const checkExecutable = vi.fn().mockImplementation(async (path: string) => {
       return path === '/usr/bin/ghostty';

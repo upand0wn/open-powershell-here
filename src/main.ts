@@ -31,7 +31,7 @@ export const NOTICE_NO_VAULT_PATH = 'Unable to resolve the local vault path.';
 export const NOTICE_NOT_FOUND_WINDOWS =
   'PowerShell 7 or later was not found. Install PowerShell and restart Obsidian.';
 export const NOTICE_NOT_FOUND_LINUX =
-  'No supported terminal emulator was found. Install Ghostty (recommended) or another supported terminal.';
+  'No supported terminal emulator was found. Install Ghostty (recommended), Ptyxis, or another supported terminal.';
 export const NOTICE_START_FAILED =
   'Terminal could not be started. Check the developer console for details.';
 export const NOTICE_SEMICOLON =
