@@ -108,7 +108,7 @@ context-menu entry manually verified (core items); edge items pending
 | L3 | 右键文件指向父目录 | 右键普通笔记 → 菜单项，终端内执行 `pwd` | 等于该文件所在目录 | 未执行 |
 | L4 | Ptyxis 已运行时新开窗口 | 先手动打开一个 Ptyxis 窗口，再点击 Ribbon | 新开 Ptyxis 窗口且目录为 vault 根（不是聚焦旧窗口、不是 home） | 未执行 |
 | L5 | 特殊字符路径 | vault 或子文件夹路径含空格/中文/`&`/括号/单引号 | 均正确打开到目标目录 | 未执行 |
-| L6 | 手动选择终端 | Style Settings → Preferred Terminal 依次选择 Ptyxis、GNOME Terminal 等 | 按选择打开；旧值 `terminal-choice-gnome` / `terminal-choice-xfce4` 仍生效 | 未执行 |
+| L6 | 手动选择终端 | Style Settings → Preferred Terminal 依次选择 Ghostty、Ptyxis、Auto-detect | 按选择打开；所选终端未安装时自动回退检测其他终端 | 未执行 |
 | L7 | 未找到终端提示 | 临时清空 PATH 后点击入口（或依赖自动化测试） | Notice：`No supported terminal emulator was found. Install Ghostty (recommended), Ptyxis, or another supported terminal.` | 未执行（自动化测试覆盖） |
 | L8 | Ubuntu 24.04 回归 | Ubuntu 24.04 + GNOME Terminal 重复 L1/L2 | gnome-terminal 正常打开且目录正确 | 未执行 |
 

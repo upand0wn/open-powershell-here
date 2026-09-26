@@ -4,24 +4,14 @@ name: Native Terminal Here
 id: open-powershell-here
 settings:
     -
-        id: ribbon-section
-        title: Ribbon Button
-        type: heading
-        level: 1
-    -
         id: hide-vault-terminal-ribbon
         title: Hide the ribbon button
         description: 'Hide the "Open Terminal at vault root" button from the left ribbon. The context-menu entry is unaffected.'
         type: class-toggle
     -
-        id: terminal-selection-section
-        title: Terminal Selection (Linux)
-        type: heading
-        level: 1
-    -
         id: terminal-choice
         title: Preferred Terminal
-        description: 'Choose which terminal emulator to use when multiple terminals are installed on Linux.'
+        description: 'Choose which terminal emulator to use on Linux. If the selected terminal is not installed, other supported terminals are still detected automatically.'
         type: class-select
         default: terminal-choice-auto
         options:
@@ -32,35 +22,8 @@ settings:
                 label: 'Ghostty'
                 value: terminal-choice-ghostty
             -
-                label: 'System Default (xdg-terminal-exec)'
-                value: terminal-choice-xdg-terminal-exec
-            -
-                label: 'Konsole'
-                value: terminal-choice-konsole
-            -
-                label: 'Alacritty'
-                value: terminal-choice-alacritty
-            -
-                label: 'Kitty'
-                value: terminal-choice-kitty
-            -
-                label: 'WezTerm'
-                value: terminal-choice-wezterm
-            -
                 label: 'Ptyxis'
                 value: terminal-choice-ptyxis
-            -
-                label: 'GNOME Terminal'
-                value: terminal-choice-gnome-terminal
-            -
-                label: 'GNOME Console'
-                value: terminal-choice-kgx
-            -
-                label: 'XFCE4 Terminal'
-                value: terminal-choice-xfce4-terminal
-            -
-                label: 'Foot'
-                value: terminal-choice-foot
 
 */
 

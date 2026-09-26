@@ -40,7 +40,7 @@
 如果你安装了 [Style Settings](https://obsidian.md/plugins?id=obsidian-style-settings) 插件，可以在其设置面板中进行个性化定制：
 
 - **隐藏侧边栏图标**：不想看到左侧的终端图标时可一键隐藏（右键菜单功能不受影响）。
-- **终端选择（Linux）**：当电脑中安装了多个终端软件时，自由指定优先打开哪一个（如 Ghostty、Ptyxis、Konsole 等）。
+- **首选终端（Linux）**：当电脑中安装了多个终端软件时，可选择 Auto-detect、Ghostty 或 Ptyxis。
 
 ---
 
