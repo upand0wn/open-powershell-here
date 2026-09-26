@@ -54,6 +54,19 @@ Linux 下插件会自动检测本机已安装的终端，支持 Ghostty、GNOME 
 
 ---
 
+## 🔐 权限与安全
+
+Obsidian 的自动审查会对本插件报告两项能力警告。二者都是“在指定目录打开终端”所必需的，且仅用于该目的。
+
+| 能力 | 为什么需要 | 不会做什么 |
+| :--- | :--- | :--- |
+| **直接访问文件系统**（`node:fs`，仅 Linux） | 扫描 `PATH` 时检查终端程序是否存在且可执行（如 `ghostty`、`ptyxis`、`gnome-terminal`）。Windows 下改为通过隐藏的版本探测启动 `pwsh` 候选来验证。 | 不读取、不写入任何文件（vault 内外都不）；不会访问文件内容。 |
+| **执行 shell 命令**（`child_process`） | 以独立进程启动所选终端：Windows 为 PowerShell 7+（可用时由 Windows Terminal 承载），Linux 为自动检测到的终端。 | 不使用 shell（`shell: false`）；不拼接命令字符串；目标目录作为独立参数并作为进程工作目录传递；绝不读取、写入或监听终端会话。 |
+
+插件不联网、不上报遥测、不写日志。
+
+---
+
 ## 📄 开源协议
 
 MIT License，详见 [LICENSE](LICENSE)。

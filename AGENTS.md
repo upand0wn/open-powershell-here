@@ -100,6 +100,7 @@
   - 目录从**仓库默认分支的 `manifest.json`** 读取最新版本，安装/更新时从 **tag 与 manifest 版本一致的 GitHub Release** 拉取三件套；README 从仓库默认分支展示。因此**发完 Release 即自动生效**（目录站点展示可能有数小时延迟，用户端 Obsidian 直接读仓库 manifest + release，无需等待）；
   - 列表搜索使用的 `name` / `description` 等元数据在 **community.obsidian.md** 后台用 Obsidian 账号登录后编辑，**不会**自动跟随仓库 manifest；首次提交/审核状态也在该站查看；
   - “This plugin has not been manually reviewed by Obsidian staff” 是官方审核状态展示，不影响安装与更新；
+  - 目录的自动审查会对 `node:fs`（Linux finder 检查终端可执行文件）与 `child_process`（启动终端进程）报告**能力警告**：这是插件核心功能所必需，**不得为消除警告而移除功能**；必须在 `README.md` / `README.zh.md` 的 “Permissions & Security / 权限与安全” 章节如实说明；
   - 社区公告（论坛 Share & showcase、Discord `#updates`）可选，不属于发版流程必选项。
 
 ## 参考文件

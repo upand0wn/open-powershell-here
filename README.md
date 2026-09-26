@@ -54,6 +54,19 @@ If you use the [Style Settings](https://obsidian.md/plugins?id=obsidian-style-se
 
 ---
 
+## 🔐 Permissions & Security
+
+Obsidian's automated plugin review reports two capability warnings for this plugin. Both are inherent to opening a terminal at a folder, and both are limited to that purpose.
+
+| Capability | Why it is needed | What it does **not** do |
+| :--- | :--- | :--- |
+| **Direct filesystem access** (`node:fs`, Linux only) | Checks whether a terminal emulator exists and is executable while scanning `PATH` (for example `ghostty`, `ptyxis`, `gnome-terminal`). On Windows, `pwsh` candidates are verified by launching them with a hidden version probe instead. | Does not read or write any file, inside or outside your vault; no file contents are accessed. |
+| **Shell execution** (`child_process`) | Launches the selected terminal as a detached process: PowerShell 7+ on Windows (hosted in Windows Terminal when available), or the detected terminal emulator on Linux. | No shell is involved (`shell: false`); no command strings are built; the target folder is passed as a separate argument and as the process working directory; the terminal session is never read, written, or monitored. |
+
+The plugin does not connect to the network, does not collect telemetry, and does not write logs.
+
+---
+
 ## 📄 License
 
 MIT License, see [LICENSE](LICENSE).
