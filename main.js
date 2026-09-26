@@ -477,7 +477,7 @@ var LinuxTerminalFinder = class {
     const installed = [];
     for (const spec of this.deps.specs) {
       for (const dir of dirs) {
-        const fullPath = (0, import_node_path2.join)(dir, spec.binary);
+        const fullPath = import_node_path2.posix.join(dir, spec.binary);
         const isExecutable = await this.deps.checkExecutable(fullPath);
         if (isExecutable) {
           installed.push({ spec, binaryPath: fullPath });
@@ -496,7 +496,7 @@ var LinuxTerminalFinder = class {
       const match = this.deps.specs.find((s) => matchesPreferredTerminal(s, normalizedPreferred));
       if (match !== void 0) {
         for (const dir of dirs) {
-          const fullPath = (0, import_node_path2.join)(dir, match.binary);
+          const fullPath = import_node_path2.posix.join(dir, match.binary);
           const isExecutable = await this.deps.checkExecutable(fullPath);
           if (isExecutable) {
             this.verified = {
@@ -514,7 +514,7 @@ var LinuxTerminalFinder = class {
     }
     for (const spec of this.deps.specs) {
       for (const dir of dirs) {
-        const fullPath = (0, import_node_path2.join)(dir, spec.binary);
+        const fullPath = import_node_path2.posix.join(dir, spec.binary);
         const isExecutable = await this.deps.checkExecutable(fullPath);
         if (isExecutable) {
           this.verified = {

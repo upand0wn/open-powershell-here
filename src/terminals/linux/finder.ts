@@ -1,6 +1,8 @@
+// This finder only scans POSIX-style Linux `PATH` entries, so it always
+// joins with POSIX semantics — even when the test suite runs on Windows.
 import { access } from 'node:fs/promises';
 import { constants } from 'node:fs';
-import { join } from 'node:path';
+import { posix } from 'node:path';
 import type { ResolvedTerminal, TerminalFinder } from '../types';
 import type { LinuxTerminalSpec } from './types';
 import { LINUX_TERMINALS } from './candidates';
@@ -87,7 +89,7 @@ export class LinuxTerminalFinder implements TerminalFinder {
 
     for (const spec of this.deps.specs) {
       for (const dir of dirs) {
-        const fullPath = join(dir, spec.binary);
+        const fullPath = posix.join(dir, spec.binary);
         const isExecutable = await this.deps.checkExecutable(fullPath);
         if (isExecutable) {
           installed.push({ spec, binaryPath: fullPath });
@@ -108,7 +110,7 @@ export class LinuxTerminalFinder implements TerminalFinder {
       const match = this.deps.specs.find((s) => matchesPreferredTerminal(s, normalizedPreferred));
       if (match !== undefined) {
         for (const dir of dirs) {
-          const fullPath = join(dir, match.binary);
+          const fullPath = posix.join(dir, match.binary);
           const isExecutable = await this.deps.checkExecutable(fullPath);
           if (isExecutable) {
             this.verified = {
@@ -128,7 +130,7 @@ export class LinuxTerminalFinder implements TerminalFinder {
     // Fallback: search all supported candidates in order
     for (const spec of this.deps.specs) {
       for (const dir of dirs) {
-        const fullPath = join(dir, spec.binary);
+        const fullPath = posix.join(dir, spec.binary);
         const isExecutable = await this.deps.checkExecutable(fullPath);
         if (isExecutable) {
           this.verified = {
