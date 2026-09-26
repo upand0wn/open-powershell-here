@@ -48,7 +48,7 @@ Linux 下插件会自动检测本机已安装的终端，支持 Ghostty、GNOME 
 2. 搜索 **Native Terminal Here** 并点击 **安装**，随后 **启用** 即可。
 
 ### 方式二：手动安装
-1. 从 [Releases 页面](https://github.com/ethanffu/open-powershell-here/releases) 下载 `main.js`、`manifest.json` 与 `styles.css`。
+1. 从 [Releases 页面](https://github.com/upand0wn/open-powershell-here/releases) 下载 `main.js`、`manifest.json` 与 `styles.css`。
 2. 将这 3 个文件放入你的笔记库目录 `<vault>/.obsidian/plugins/open-powershell-here/` 中。
 3. 重新加载 Obsidian 并启用插件。
 
