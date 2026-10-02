@@ -18,6 +18,8 @@ Open your computer's native terminal directly from Obsidian without typing `cd <
 
 On Linux the plugin detects an installed terminal automatically, including Ghostty, GNOME Terminal, GNOME Console, Konsole, Alacritty, Kitty, WezTerm, XFCE4 Terminal, and Foot. To always use a specific one, select it under **Style Settings → Preferred Terminal**.
 
+**Kitty** is fully supported: both the ribbon button and the right-click menu open Kitty in the target folder.
+
 ---
 
 ## 🚀 How to Use

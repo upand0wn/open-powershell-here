@@ -18,6 +18,8 @@
 
 Linux 下插件会自动检测本机已安装的终端，支持 Ghostty、GNOME Terminal、GNOME Console、Konsole、Alacritty、Kitty、WezTerm、XFCE4 Terminal、Foot 等。如需固定使用某一个，可在 **Style Settings → Preferred Terminal** 中选择。
 
+**Kitty** 已完全适配：侧边栏按钮与右键菜单均可在目标目录中打开 Kitty。
+
 ---
 
 ## 🚀 使用方法
