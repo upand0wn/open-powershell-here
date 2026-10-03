@@ -96,7 +96,7 @@
 - 版本发布（版本号 / tag / Release / `versions.json` 更新）**只在用户明确要求时进行**；功能需经用户实机确认后再发布；普通提交不升版本、不打 tag、不发 Release。
 - 版本号遵循 SemVer：新功能 → minor（如 `0.5.1 → 0.6.0`）；修复 / 文档 / 杂项 → patch；**不跳号、不回退**。
 - 发版步骤：
-  1. 更新 `manifest.json` 的 `version`、`package.json` 的 `version`，并在 `versions.json` 顶部加入 `"X.Y.Z": "<minAppVersion>"`；
+  1. 更新 `manifest.json` 的 `version`、`package.json` 的 `version`、`package-lock.json` 顶部两处 `name` / `version`（只手改这两处，不要用 `npm install --package-lock-only` 重写，否则会丢失依赖的 `libc` 字段），并在 `versions.json` 顶部加入 `"X.Y.Z": "<minAppVersion>"`；
   2. `npm run verify` 通过，确认 `main.js` 已重建并提交；
   3. 提交 `chore: prepare vX.Y.Z release`，推送 `main`，确认远端 HEAD 与本地一致；
   4. 触发 Release workflow（`.github/workflows/release.yml`，二选一；**推荐与历史一致的方式 A**）：
