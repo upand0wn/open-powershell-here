@@ -19,8 +19,6 @@ Open your computer's native terminal directly from Obsidian without typing `cd <
 
 On Linux the plugin uses your system's default terminal first (via `xdg-terminal-exec`, or the Debian/Ubuntu `x-terminal-emulator` alternative). Only if no default can be determined does it fall back to the first installed terminal among Alacritty, Foot, Ghostty, GNOME Terminal, GNOME Console, Kitty, Konsole, Ptyxis, WezTerm, and XFCE4 Terminal (alphabetical, none favoured). To always use a specific one, select it under **Style Settings → Preferred Terminal**.
 
-**Kitty** is fully supported on Linux: both the ribbon button and the right-click menu open Kitty in the target folder, and it can be selected under **Style Settings → Preferred Terminal**.
-
 > ⚠️ **macOS support is untested.** The macOS code path is covered by automated tests only; it has **not been verified on a real Mac**. By default the plugin opens the built-in Terminal.app at the target folder; Ghostty or Kitty is used when selected under **Style Settings → Preferred Terminal** and installed in `/Applications` or `~/Applications`. If it does not work for you, please [open an issue](https://github.com/upand0wn/open-powershell-here/issues).
 
 ---
