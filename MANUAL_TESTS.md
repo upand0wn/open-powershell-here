@@ -123,7 +123,9 @@ context-menu entry manually verified (core items); edge items pending
 
 ## macOS 人工验收清单（2026-10-03 新增，全部未执行）
 
-背景：2026-10-03 新增 macOS 支持，**开发与测试均在 Linux 上完成，没有任何一项在真实 Mac 上验证过**。实现方式：`spawn('/usr/bin/open', args, { cwd, detached: true, stdio: 'ignore', shell: false })`，在 `/Applications`、`/System/Applications/Utilities`、`/System/Applications`、`~/Applications` 中查找应用包；Auto-detect 使用 Terminal.app，Ghostty / Kitty 仅在 Preferred Terminal 中选中且已安装时使用。
+CI 冒烟测试（2026-10-03，GitHub `macos-latest` runner，`scripts/smoke-macos.mjs`，非人工验收、不在 Obsidian 内）：真实 finder + launcher 打开 Terminal.app 成功——不存在的 `/Applications/Terminal.app` 被 `open` 以非零退出码拒绝并跳过，`/System/Applications/Utilities/Terminal.app` 打开后有 shell 的工作目录等于目标目录（含空格 / `&` / 括号 / 单引号 / 中文 / `;`）。下表 M1–M6 仍需在真实 Obsidian 中人工执行。
+
+背景：2026-10-03 新增 macOS 支持，**开发与测试均在 Linux 上完成，没有任何一项在真实 Mac 上人工验证过**。实现方式：`execFile('/usr/bin/open', args, { cwd, shell: false })` 并等待 `open` 退出，按 `/Applications`、`/System/Applications/Utilities`、`/System/Applications`、`~/Applications` 的顺序尝试应用包路径（非零退出码视为未安装，换下一个）；Auto-detect 使用 Terminal.app，Ghostty / Kitty 仅在 Preferred Terminal 中选中且已安装时使用。
 
 | # | 项目 | 步骤 | 预期 | 状态 |
 | --- | --- | --- | --- | --- |

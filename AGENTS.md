@@ -73,9 +73,10 @@
 - 实测（与插件 launcher 相同参数）`spawn('/usr/bin/xdg-terminal-exec', ['--dir=<dir>'], { cwd, detached: true, stdio: 'ignore' })` 可正常启动。
 - Linux 人工验收清单见 `MANUAL_TESTS.md` 的 L1–L11；未执行项不得伪造为通过。
 
-### macOS（2026-10-03，无实机）
+### macOS（2026-10-03，无实机；仅 CI runner 冒烟测试）
 
-- 全部实现基于文档与通用经验，**没有任何实机事实**；人工验收清单见 `MANUAL_TESTS.md` 的 M1–M6，全部未执行。
+- 实现基于文档与通用经验，**没有在真实 Obsidian / 真实用户 Mac 上验证过**；人工验收清单见 `MANUAL_TESTS.md` 的 M1–M6，全部未执行。
+- CI 事实（2026-10-03，GitHub `macos-latest` runner，`scripts/smoke-macos.mjs`，真实 finder + launcher、无 mock）：`open -a /Applications/Terminal.app <dir>` 以非零退出码失败（该路径不存在）→ 被 `reject()` 跳过；`open -a /System/Applications/Utilities/Terminal.app <dir>` 成功，且有 shell 进程的工作目录等于目标目录（目录名含空格 / `&` / 括号 / 单引号 / 中文 / `;`）。Ghostty / Kitty 路径未覆盖。这**不等于**用户实机验收，README 的“未验证”声明仍须保留。
 
 ## 质量与流程
 
@@ -103,7 +104,7 @@
      - A：`gh workflow run release.yml -f tag_name=X.Y.Z`；
      - B：`git tag X.Y.Z && git push origin X.Y.Z`。
      - **tag 名必须与 manifest 版本完全一致（不带 `v` 前缀）**；workflow 会执行 verify + 构建证明（attestation）并上传 `main.js`/`manifest.json`/`styles.css`；
-  5. 发布后验证：`gh release view X.Y.Z`（非 draft、非 prerelease、三个附件齐全）；tag 指向版本提交；CI（`ci.yml`，`windows-latest` + `ubuntu-latest`）全绿。
+  5. 发布后验证：`gh release view X.Y.Z`（非 draft、非 prerelease、三个附件齐全）；tag 指向版本提交；CI（`ci.yml`，`windows-latest` + `ubuntu-latest` + `macos-latest`）全绿。
 - 社区市场（**2026-09-26 起的新流程，不再向 `obsidianmd/obsidian-releases` 提 PR**）：
   - 该仓库现在是 [community.obsidian.md](https://community.obsidian.md) 目录的自动镜像；
   - 目录从**仓库默认分支的 `manifest.json`** 读取最新版本，安装/更新时从 **tag 与 manifest 版本一致的 GitHub Release** 拉取三件套；README 从仓库默认分支展示。因此**发完 Release 即自动生效**（目录站点展示可能有数小时延迟，用户端 Obsidian 直接读仓库 manifest + release，无需等待）；
@@ -117,9 +118,10 @@
 - `MANUAL_TESTS.md`：真实验收清单（Windows 清单 + Linux/Ubuntu L1–L11 + macOS M1–M6）与平台行为发现；未执行项保持“未执行”。
 - `README.md`（英文，默认）/ `README.zh.md`（简体中文）：用户文档，必须同步（两文件仅在语言与互链上不同）。
 - `AGENTS.local.md`：维护者本地运维指引（deploy key、推送/发布命令），**不提交**（已 gitignore），仅本机工作区存在。
-- `.github/workflows/ci.yml`：CI（`windows-latest` + `ubuntu-latest` 矩阵；lint/typecheck/test/build + `main.js` 同步检查）。
+- `.github/workflows/ci.yml`：CI（`windows-latest` + `ubuntu-latest` + `macos-latest` 矩阵；lint/typecheck/test/build + `main.js` 同步检查；macOS 上额外运行 `scripts/smoke-macos.mjs` 冒烟测试）。
 - `.github/workflows/release.yml`：Release workflow（tag push 或 workflow_dispatch；verify + attestation + 上传三件套）。
 - `src/`：`main.ts`（生命周期、Ribbon、右键菜单、Notice）、`vault-path.ts`（路径解析）、`terminals/manager.ts`（平台分派、偏好终端）、`terminals/types.ts`、`terminals/windows/{candidates,version-probe,launcher,finder,types}.ts`、`terminals/linux/{candidates,finder,launcher,alternatives,types}.ts`、`terminals/macos/{candidates,finder,launcher,types}.ts`、`terminals/spawn-detached.ts`（Linux 的分离进程启动）。
 - `styles.css`：Style Settings `@settings` 块（Hide the ribbon button + Preferred Terminal）与隐藏 Ribbon 的 CSS。
 - `tests/`：Vitest 测试；`tests/mocks/obsidian.ts` 是 `obsidian` 包（仅类型）的测试替身（见 `vitest.config.ts` 别名）。
+- `scripts/smoke-macos.mjs`：仅 macOS，CI 冒烟测试——用真实 finder + launcher 打开 Terminal.app 并检查 shell 的工作目录。
 - `scripts/install-test.mjs`：`npm run install:test`，把构建产物装入 `.test-vault` 并幂等注册到 `community-plugins.json`。
