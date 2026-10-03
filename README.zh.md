@@ -59,12 +59,13 @@ Linux 下插件优先使用系统的默认终端（通过 `xdg-terminal-exec`，
 
 ## 🔐 权限与安全
 
-Obsidian 的自动审查会对本插件报告两项能力警告。二者都是“在指定目录打开终端”所必需的，且仅用于该目的。
+Obsidian 的自动审查会对本插件报告一项能力警告。它是“在指定目录打开终端”所必需的，且仅用于该目的。
 
 | 能力 | 为什么需要 | 不会做什么 |
 | :--- | :--- | :--- |
-| **直接访问文件系统**（`node:fs`，Linux 与 macOS） | Linux 下扫描 `PATH` 时检查终端程序是否存在且可执行（如 `ghostty`、`ptyxis`、`gnome-terminal`）；macOS 下检查终端应用包是否存在（如 `Terminal.app`）。Windows 下改为通过隐藏的版本探测启动 `pwsh` 候选来验证。 | 不读取、不写入任何文件（vault 内外都不）；不会访问文件内容。 |
-| **执行 shell 命令**（`child_process`） | 以独立进程启动所选终端：Windows 为 PowerShell 7+（可用时由 Windows Terminal 承载），Linux 为自动检测到的终端，macOS 通过 `/usr/bin/open` 启动终端应用。 | 不使用 shell（`shell: false`）；不拼接命令字符串；目标目录作为独立参数并作为进程工作目录传递；绝不读取、写入或监听终端会话。 |
+| **执行 shell 命令**（`child_process`） | 以独立进程启动所选终端：Windows 为 PowerShell 7+（可用时由 Windows Terminal 承载），Linux 为终端程序，macOS 通过 `/usr/bin/open` 启动终端应用。为确定已安装哪个终端，插件按顺序直接尝试启动候选终端，直到成功为止；Windows 下通过隐藏的版本探测验证 `pwsh` 候选，Debian/Ubuntu 下运行 `update-alternatives --query x-terminal-emulator` 识别默认终端。 | 不使用 shell（`shell: false`）；不拼接命令字符串；目标目录作为独立参数并作为进程工作目录传递；绝不读取、写入或监听终端会话。 |
+
+插件**不使用** Node.js 的 `fs` 模块：不读取、不写入、也不检查任何文件（vault 内外都不）。
 
 插件不联网、不上报遥测、不写日志。
 

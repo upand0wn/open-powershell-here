@@ -1,28 +1,38 @@
-import { EventEmitter } from 'node:events';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { spawnMock } = vi.hoisted(() => ({ spawnMock: vi.fn() }));
+const { execFileMock } = vi.hoisted(() => ({ execFileMock: vi.fn() }));
 vi.mock('node:child_process', () => ({
-  spawn: (...args: unknown[]) => spawnMock(...args),
+  execFile: (...args: unknown[]) => execFileMock(...args),
 }));
 
 import { MAC_TERMINALS } from '../src/terminals/macos/candidates';
 import { MacTerminalFinder } from '../src/terminals/macos/finder';
 import { launchMacTerminal } from '../src/terminals/macos/launcher';
 
-class FakeChild extends EventEmitter {
-  pid = 4242;
-  unref = vi.fn();
+import type { ResolvedTerminal } from '../src/terminals/types';
+
+type ExecFileCallback = (error: Error | null) => void;
+type ExecFileCall = [string, string[], Record<string, unknown>, ExecFileCallback];
+
+function makeFinder(home = '/Users/me'): MacTerminalFinder {
+  return new MacTerminalFinder({ env: { HOME: home }, debug: () => {} });
 }
 
-type SpawnCall = [string, string[], Record<string, unknown>];
-
-function makeFinder(existing: string[], home = '/Users/me'): MacTerminalFinder {
-  return new MacTerminalFinder({
-    checkExists: vi.fn().mockImplementation(async (path: string) => existing.includes(path)),
-    env: { HOME: home },
-    debug: () => {},
-  });
+/**
+ * Drive the finder the way the manager does: an app bundle path that is
+ * not in `existing` fails to open and is rejected, until one opens.
+ */
+async function resolveExisting(
+  finder: MacTerminalFinder,
+  existing: string[],
+): Promise<ResolvedTerminal | null> {
+  for (;;) {
+    const candidate = await finder.resolve();
+    if (candidate === null || existing.includes(candidate.extra?.appPath as string)) {
+      return candidate;
+    }
+    finder.reject(candidate);
+  }
 }
 
 const TERMINAL_APP = '/System/Applications/Utilities/Terminal.app';
@@ -54,70 +64,94 @@ describe('MAC_TERMINALS', () => {
 
 describe('MacTerminalFinder', () => {
   it('resolves Terminal.app by default even when other terminals are installed', async () => {
-    const finder = makeFinder([TERMINAL_APP, '/Applications/Ghostty.app']);
-    const resolved = await finder.resolve();
+    const resolved = await resolveExisting(makeFinder(), [TERMINAL_APP, '/Applications/Ghostty.app']);
     expect(resolved?.id).toBe('terminal');
     expect(resolved?.binaryPath).toBe('/usr/bin/open');
     expect(resolved?.extra?.appPath).toBe(TERMINAL_APP);
   });
 
   it('prefers the user-selected terminal (Style Settings class value)', async () => {
-    const finder = makeFinder([TERMINAL_APP, '/Applications/kitty.app']);
+    const finder = makeFinder();
     finder.setPreferredTerminal('terminal-choice-kitty');
-    const resolved = await finder.resolve();
+    const resolved = await resolveExisting(finder, [TERMINAL_APP, '/Applications/kitty.app']);
     expect(resolved?.id).toBe('kitty');
     expect(resolved?.extra?.appPath).toBe('/Applications/kitty.app');
   });
 
   it('finds apps installed in ~/Applications', async () => {
-    const finder = makeFinder([TERMINAL_APP, '/Users/me/Applications/Ghostty.app']);
+    const finder = makeFinder();
     finder.setPreferredTerminal('ghostty');
-    expect((await finder.resolve())?.extra?.appPath).toBe('/Users/me/Applications/Ghostty.app');
+    const resolved = await resolveExisting(finder, [TERMINAL_APP, '/Users/me/Applications/Ghostty.app']);
+    expect(resolved?.extra?.appPath).toBe('/Users/me/Applications/Ghostty.app');
   });
 
   it('falls back to Terminal.app when the preferred terminal is missing or Linux-only', async () => {
-    const finder = makeFinder([TERMINAL_APP]);
+    const finder = makeFinder();
     finder.setPreferredTerminal('ghostty');
-    expect((await finder.resolve())?.id).toBe('terminal');
+    expect((await resolveExisting(finder, [TERMINAL_APP]))?.id).toBe('terminal');
     finder.setPreferredTerminal('ptyxis');
-    expect((await finder.resolve())?.id).toBe('terminal');
+    expect((await resolveExisting(finder, [TERMINAL_APP]))?.id).toBe('terminal');
   });
 
   it('returns null when nothing is installed, and caches until invalidated', async () => {
-    expect(await makeFinder([]).resolve()).toBeNull();
+    expect(await resolveExisting(makeFinder(), [])).toBeNull();
 
-    const finder = makeFinder([TERMINAL_APP]);
-    const first = await finder.resolve();
+    const finder = makeFinder();
+    const first = await resolveExisting(finder, [TERMINAL_APP]);
     expect(finder.cached).toBe(first);
+    expect(await finder.resolve()).toBe(first);
     finder.invalidate();
     expect(finder.cached).toBeNull();
   });
 });
 
 describe('launchMacTerminal', () => {
+  const terminal: ResolvedTerminal = {
+    id: 'terminal',
+    displayName: 'Terminal',
+    binaryPath: '/usr/bin/open',
+    extra: { spec: MAC_TERMINALS[0], appPath: TERMINAL_APP },
+  };
+
+  function mockOpen(error: Error | null): void {
+    execFileMock.mockImplementation((...args: unknown[]) => {
+      setImmediate(() => (args as ExecFileCall)[3](error));
+      return { pid: 4242 };
+    });
+  }
+
   beforeEach(() => {
-    spawnMock.mockReset();
+    execFileMock.mockReset();
   });
 
-  it('spawns /usr/bin/open detached, without a shell, with cwd set', async () => {
-    const child = new FakeChild();
-    spawnMock.mockImplementation(() => {
-      setImmediate(() => child.emit('spawn'));
-      return child;
-    });
-
-    const terminal = await makeFinder([TERMINAL_APP]).resolve();
-    expect(terminal).not.toBeNull();
-    const outcome = await launchMacTerminal(terminal!, '/Users/me/vault');
+  it('runs /usr/bin/open without a shell, with cwd set', async () => {
+    mockOpen(null);
+    const outcome = await launchMacTerminal(terminal, '/Users/me/vault');
     expect(outcome).toEqual({ ok: true, pid: 4242 });
 
-    const [file, args, options] = (spawnMock.mock.calls as unknown as SpawnCall[])[0];
+    const [file, args, options] = (execFileMock.mock.calls as unknown as ExecFileCall[])[0];
     expect(file).toBe('/usr/bin/open');
     expect(args).toEqual(['-a', TERMINAL_APP, '/Users/me/vault']);
     expect(options.cwd).toBe('/Users/me/vault');
     expect(options.shell).toBe(false);
-    expect(options.detached).toBe(true);
-    expect(options.stdio).toBe('ignore');
+  });
+
+  it('reports a non-zero exit of open as ENOENT so the next candidate is tried', async () => {
+    mockOpen(Object.assign(new Error('The file does not exist.'), { code: 1 }));
+    const outcome = await launchMacTerminal(terminal, '/Users/me/vault');
+    expect(outcome.ok).toBe(false);
+    if (!outcome.ok) {
+      expect(outcome.code).toBe('ENOENT');
+    }
+  });
+
+  it('reports other failures (e.g. timeout) as UNKNOWN', async () => {
+    mockOpen(Object.assign(new Error('killed'), { killed: true, signal: 'SIGTERM' }));
+    const outcome = await launchMacTerminal(terminal, '/Users/me/vault');
+    expect(outcome.ok).toBe(false);
+    if (!outcome.ok) {
+      expect(outcome.code).toBe('UNKNOWN');
+    }
   });
 
   it('fails without spawning when the app bundle path is missing', async () => {
@@ -126,6 +160,6 @@ describe('launchMacTerminal', () => {
       '/Users/me/vault',
     );
     expect(outcome.ok).toBe(false);
-    expect(spawnMock).not.toHaveBeenCalled();
+    expect(execFileMock).not.toHaveBeenCalled();
   });
 });

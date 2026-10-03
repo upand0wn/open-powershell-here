@@ -31,7 +31,7 @@
 2. 目标路径只作为**独立进程参数**与 `cwd` 传递；不得把路径拼进命令字符串；禁止 `shell: true`、批处理/脚本包装器。
 3. **不修改真实 vault**；测试只使用项目内 `.test-vault/`（gitignore）；`npm run install:test` 只复制 `main.js`/`manifest.json`/存在的 `styles.css`，并幂等写入 `community-plugins.json`。
 4. **不联网、不遥测、不上传**；不写日志文件；不监听/记录终端会话；vault 路径只作为进程参数与 `cwd` 使用。
-5. 内存缓存（已解析终端）只存在于内存，Ribbon 与右键菜单**共用同一个 finder 实例（同一缓存、同一单飞锁）**；正式启动 `ENOENT` 时清缓存并**最多重试一次**；缓存后每次点击任一入口都开新窗口、无冷却。
+5. 内存缓存（已解析终端）只存在于内存，Ribbon 与右键菜单**共用同一个 finder 实例（同一缓存、同一单飞锁）**；正式启动 `ENOENT` 时：Windows 清缓存并**最多重试一次**；Linux / macOS 的 finder 通过 `reject()` 跳过该候选并依次尝试下一个，全部失败才报 not found（下次点击重新从头尝试）；缓存后每次点击任一入口都开新窗口、无冷却。
 6. 若无法实现可靠交互窗口，必须**如实报告**（实现、表现、原因、代码状态、约束冲突），不得用被禁止的程序悄悄绕过，不得把 mock 测试说成真实窗口验证。
 
 ### Windows
@@ -44,12 +44,12 @@
 ### Linux
 
 11. 只启动候选列表中的终端或系统默认终端；参数必须由 `buildArgs` 生成并作为独立参数传递（如 `--working-directory=<dir>`、`xdg-terminal-exec --dir=<dir>`、Ptyxis 的 `--new-window --working-directory=<dir>`），不得改用 shell 字符串或包装脚本。
-12. Linux finder 扫描 POSIX 风格的 `PATH` 时必须使用 `posix.join`（在 Windows 上跑测试也必须得到 POSIX 路径）。
+12. **不得使用 `node:fs`（2026-10-03 用户要求消除市场的 Direct Filesystem Access 警告）**：Linux finder 不扫描 `PATH`、不检查文件，只按候选顺序给出**裸程序名**（由系统在 `spawn` 时按 `PATH` 解析），启动 `ENOENT` 即视为未安装并换下一个；`x-terminal-emulator` 的真实指向通过无 shell 的 `update-alternatives --query x-terminal-emulator`（读取 `Value:` 字段）识别，查询失败则直接启动该链接。
 13. `xdg-terminal-exec` 必须保持候选列表第一位、`x-terminal-emulator` 第二位，其余终端按 id 字母顺序排列；不得把任何具体终端排到系统默认机制之前，不得在文案中“推荐”某个终端，不得破坏“跟随系统默认终端”的行为，除非用户明确要求。
 
 ### macOS
 
-14a. 只通过 `/usr/bin/open` 启动候选列表中的应用包（`open` 仅作为启动器，类比 Windows 的 `wt.exe`）；参数由 `buildArgs(appPath, dir)` 生成并作为独立参数传递；不得使用 `osascript` / AppleScript、shell 字符串或包装脚本。应用包只在 `/Applications`、`/System/Applications/Utilities`、`/System/Applications`、`~/Applications` 中做存在性检查，不搜索整个磁盘。
+14a. 只通过 `/usr/bin/open` 启动候选列表中的应用包（`open` 仅作为启动器，类比 Windows 的 `wt.exe`）；参数由 `buildArgs(appPath, dir)` 生成并作为独立参数传递；不得使用 `osascript` / AppleScript、shell 字符串或包装脚本。应用包只在 `/Applications`、`/System/Applications/Utilities`、`/System/Applications`、`~/Applications` 这几个固定路径中尝试，不搜索整个磁盘；**不做 `node:fs` 存在性检查**，而是直接用 `open -a <应用包完整路径>` 尝试并等待 `open` 退出，非零退出码视为该路径下未安装（按 `ENOENT` 处理，换下一个路径/候选）。
 
 ### 右键菜单
 
@@ -109,7 +109,7 @@
   - 目录从**仓库默认分支的 `manifest.json`** 读取最新版本，安装/更新时从 **tag 与 manifest 版本一致的 GitHub Release** 拉取三件套；README 从仓库默认分支展示。因此**发完 Release 即自动生效**（目录站点展示可能有数小时延迟，用户端 Obsidian 直接读仓库 manifest + release，无需等待）；
   - 列表搜索使用的 `name` / `description` 等元数据在 **community.obsidian.md** 后台用 Obsidian 账号登录后编辑，**不会**自动跟随仓库 manifest；首次提交/审核状态也在该站查看；
   - “This plugin has not been manually reviewed by Obsidian staff” 是官方审核状态展示，不影响安装与更新；
-  - 目录的自动审查会对 `node:fs`（Linux finder 检查终端可执行文件、macOS finder 检查应用包是否存在）与 `child_process`（启动终端进程）报告**能力警告**：这是插件核心功能所必需，**不得为消除警告而移除功能**；必须在 `README.md` / `README.zh.md` 的 “Permissions & Security / 权限与安全” 章节如实说明；
+  - 目录的自动审查会对 `child_process`（启动终端进程）报告 **Shell Execution** 能力警告：这是插件核心功能所必需，无法消除，**不得为消除警告而移除功能，也不得用混淆等手段规避检测**；必须在 `README.md` / `README.zh.md` 的 “Permissions & Security / 权限与安全” 章节如实说明。**Direct Filesystem Access** 警告已通过移除全部 `node:fs` 用法消除（见硬性约束 12、14a），不得重新引入 `node:fs`；
   - 社区公告（论坛 Share & showcase、Discord `#updates`）可选，不属于发版流程必选项。
 
 ## 参考文件
@@ -119,7 +119,7 @@
 - `AGENTS.local.md`：维护者本地运维指引（deploy key、推送/发布命令），**不提交**（已 gitignore），仅本机工作区存在。
 - `.github/workflows/ci.yml`：CI（`windows-latest` + `ubuntu-latest` 矩阵；lint/typecheck/test/build + `main.js` 同步检查）。
 - `.github/workflows/release.yml`：Release workflow（tag push 或 workflow_dispatch；verify + attestation + 上传三件套）。
-- `src/`：`main.ts`（生命周期、Ribbon、右键菜单、Notice）、`vault-path.ts`（路径解析）、`terminals/manager.ts`（平台分派、偏好终端）、`terminals/types.ts`、`terminals/windows/{candidates,version-probe,launcher,finder,types}.ts`、`terminals/linux/{candidates,finder,launcher,types}.ts`、`terminals/macos/{candidates,finder,launcher,types}.ts`、`terminals/spawn-detached.ts`（Linux / macOS 共用的分离进程启动）。
+- `src/`：`main.ts`（生命周期、Ribbon、右键菜单、Notice）、`vault-path.ts`（路径解析）、`terminals/manager.ts`（平台分派、偏好终端）、`terminals/types.ts`、`terminals/windows/{candidates,version-probe,launcher,finder,types}.ts`、`terminals/linux/{candidates,finder,launcher,alternatives,types}.ts`、`terminals/macos/{candidates,finder,launcher,types}.ts`、`terminals/spawn-detached.ts`（Linux 的分离进程启动）。
 - `styles.css`：Style Settings `@settings` 块（Hide the ribbon button + Preferred Terminal）与隐藏 Ribbon 的 CSS。
 - `tests/`：Vitest 测试；`tests/mocks/obsidian.ts` 是 `obsidian` 包（仅类型）的测试替身（见 `vitest.config.ts` 别名）。
 - `scripts/install-test.mjs`：`npm run install:test`，把构建产物装入 `.test-vault` 并幂等注册到 `community-plugins.json`。

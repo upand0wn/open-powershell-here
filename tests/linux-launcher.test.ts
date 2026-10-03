@@ -35,7 +35,7 @@ describe('launchLinuxTerminal', () => {
     const terminal: ResolvedTerminal = {
       id: 'ghostty',
       displayName: 'Ghostty',
-      binaryPath: '/usr/bin/ghostty',
+      binaryPath: 'ghostty',
       extra: {
         spec: {
           id: 'ghostty',
@@ -51,7 +51,7 @@ describe('launchLinuxTerminal', () => {
     expect(child.unref).toHaveBeenCalled();
 
     const [file, args, options] = calls()[0];
-    expect(file).toBe('/usr/bin/ghostty');
+    expect(file).toBe('ghostty');
     expect(args).toEqual(['--working-directory=/home/user/vault']);
     expect(options.cwd).toBe('/home/user/vault');
     expect(options.detached).toBe(true);
@@ -72,7 +72,7 @@ describe('launchLinuxTerminal', () => {
     const terminal: ResolvedTerminal = {
       id: 'ghostty',
       displayName: 'Ghostty',
-      binaryPath: '/usr/bin/ghostty',
+      binaryPath: 'ghostty',
     };
 
     const outcome = await launchLinuxTerminal(terminal, '/home/user/vault');

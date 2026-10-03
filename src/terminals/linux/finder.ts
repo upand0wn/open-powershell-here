@@ -1,35 +1,14 @@
-// This finder only scans POSIX-style Linux `PATH` entries, so it always
-// joins with POSIX semantics — even when the test suite runs on Windows.
-import { access, realpath } from 'node:fs/promises';
-import { constants } from 'node:fs';
 import { posix } from 'node:path';
 import type { ResolvedTerminal, TerminalFinder } from '../types';
 import type { LinuxTerminalSpec } from './types';
 import { LINUX_TERMINALS } from './candidates';
+import { queryAlternative } from './alternatives';
 
 export interface LinuxFinderDeps {
   readonly specs: readonly LinuxTerminalSpec[];
-  readonly checkExecutable: (path: string) => Promise<boolean>;
-  readonly resolveRealPath: (path: string) => Promise<string | null>;
-  readonly env?: NodeJS.ProcessEnv;
+  /** Path the Debian alternative `name` points at, or `null` if unknown. */
+  readonly queryAlternative: (name: string) => Promise<string | null>;
   readonly debug?: (message: string) => void;
-}
-
-async function defaultCheckExecutable(filePath: string): Promise<boolean> {
-  try {
-    await access(filePath, constants.X_OK);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function defaultResolveRealPath(filePath: string): Promise<string | null> {
-  try {
-    return await realpath(filePath);
-  } catch {
-    return null;
-  }
 }
 
 function matchesPreferredTerminal(spec: LinuxTerminalSpec, normalizedPreferred: string): boolean {
@@ -42,18 +21,28 @@ function matchesPreferredTerminal(spec: LinuxTerminalSpec, normalizedPreferred: 
   return (spec.aliases ?? []).some((alias) => alias.toLowerCase() === normalizedPreferred);
 }
 
+function toTerminal(spec: LinuxTerminalSpec): ResolvedTerminal {
+  // The bare binary name is resolved against `PATH` by the OS when the
+  // terminal is spawned; the plugin never touches the filesystem itself.
+  return { id: spec.id, displayName: spec.displayName, binaryPath: spec.binary, extra: { spec } };
+}
+
+/**
+ * Picks the next terminal to try. Nothing is probed up front: a candidate
+ * that turns out to be missing fails to spawn with `ENOENT`, is reported
+ * back through `reject()`, and the next candidate is offered.
+ */
 export class LinuxTerminalFinder implements TerminalFinder {
   private verified: ResolvedTerminal | null = null;
   private currentPreferredId: string | null = null;
   private resolving: Promise<ResolvedTerminal | null> | null = null;
+  private readonly rejected = new Set<string>();
   private readonly deps: LinuxFinderDeps;
 
   constructor(deps?: Partial<LinuxFinderDeps>) {
     this.deps = {
       specs: deps?.specs ?? LINUX_TERMINALS,
-      checkExecutable: deps?.checkExecutable ?? defaultCheckExecutable,
-      resolveRealPath: deps?.resolveRealPath ?? defaultResolveRealPath,
-      env: deps?.env,
+      queryAlternative: deps?.queryAlternative ?? queryAlternative,
       debug: deps?.debug ?? ((msg) => console.debug(`[Native Terminal Here] ${msg}`)),
     };
   }
@@ -88,82 +77,62 @@ export class LinuxTerminalFinder implements TerminalFinder {
     return this.resolving;
   }
 
+  /** `terminal` could not be started: skip it and offer the next candidate. */
+  reject(terminal: ResolvedTerminal): void {
+    this.rejected.add(terminal.id);
+    this.verified = null;
+    this.deps.debug?.(`rejected terminal ${terminal.displayName} (${terminal.binaryPath})`);
+  }
+
   invalidate(): void {
     this.verified = null;
-  }
-
-  private pathDirs(): string[] {
-    const pathEnv = (this.deps.env ?? process.env).PATH ?? '';
-    return pathEnv.split(':').filter(Boolean);
-  }
-
-  private async locate(spec: LinuxTerminalSpec): Promise<ResolvedTerminal | null> {
-    for (const dir of this.pathDirs()) {
-      const fullPath = posix.join(dir, spec.binary);
-      if (await this.deps.checkExecutable(fullPath)) {
-        return {
-          id: spec.id,
-          displayName: spec.displayName,
-          binaryPath: fullPath,
-          extra: { spec },
-        };
-      }
-    }
-    return null;
+    this.rejected.clear();
   }
 
   /**
    * Follow a system-default link (e.g. `x-terminal-emulator`) to the
-   * terminal it points at. Returns that terminal when it is a supported one
-   * found on `PATH`, so it is launched with its own working-directory flag;
-   * otherwise returns the link itself.
+   * terminal it points at. Returns that terminal when it is a supported
+   * one, so it is launched with its own working-directory flag; otherwise
+   * returns the link itself.
    */
-  private async followSystemDefault(link: ResolvedTerminal): Promise<ResolvedTerminal> {
-    const realPath = await this.deps.resolveRealPath(link.binaryPath);
-    if (realPath === null) {
+  private async followSystemDefault(link: LinuxTerminalSpec): Promise<LinuxTerminalSpec> {
+    const targetPath = await this.deps.queryAlternative(link.binary);
+    if (targetPath === null) {
       return link;
     }
     // Debian ships wrappers such as `gnome-terminal.wrapper`.
-    const target = posix.basename(realPath).replace(/\.wrapper$/, '');
+    const target = posix.basename(targetPath).replace(/\.wrapper$/, '');
     const match = this.deps.specs.find(
-      (s) => s.systemDefaultLink !== true && s.binary === target,
+      (s) => s.systemDefaultLink !== true && s.binary === target && !this.rejected.has(s.id),
     );
-    if (match === undefined) {
-      return link;
-    }
-    return (await this.locate(match)) ?? link;
+    return match ?? link;
   }
 
-  private async findBest(preferredId?: string | null): Promise<ResolvedTerminal | null> {
-    // If user has a preferred terminal, attempt to find that one first
-    if (preferredId !== null && preferredId !== undefined && preferredId !== 'auto' && preferredId !== '') {
+  private async findBest(preferredId: string | null): Promise<ResolvedTerminal | null> {
+    const candidates = [...this.deps.specs];
+
+    // The user's preferred terminal is tried first, then the default order
+    // (system default first).
+    if (preferredId !== null && preferredId !== 'auto' && preferredId !== '') {
       const normalizedPreferred = preferredId.toLowerCase().replace(/^terminal-choice-/, '');
       const match = this.deps.specs.find((s) => matchesPreferredTerminal(s, normalizedPreferred));
       if (match !== undefined) {
-        const found = await this.locate(match);
-        if (found !== null) {
-          this.verified = found;
-          this.deps.debug?.(`found preferred terminal: ${match.displayName} at ${found.binaryPath}`);
-          return this.verified;
-        }
-        this.deps.debug?.(`preferred terminal ${match.displayName} not found on system`);
+        candidates.unshift(match);
       }
     }
 
-    // Fallback: search all supported candidates in order (system default first)
-    for (const spec of this.deps.specs) {
-      const found = await this.locate(spec);
-      if (found !== null) {
-        this.verified =
-          spec.systemDefaultLink === true ? await this.followSystemDefault(found) : found;
-        this.deps.debug?.(
-          `found terminal: ${this.verified.displayName} at ${this.verified.binaryPath}`,
-        );
-        return this.verified;
-      }
-      this.deps.debug?.(`rejected terminal ${spec.displayName} (${spec.binary})`);
+    const next = candidates.find((s) => !this.rejected.has(s.id));
+    if (next === undefined) {
+      // Every candidate failed; start over on the next click.
+      this.rejected.clear();
+      return null;
     }
 
-    return null;
+    const spec = next.systemDefaultLink === true ? await this.followSystemDefault(next) : next;
+    // A followed link is remembered under the link's own id, so a failure
+    // rejects the link and does not offer it again.
+    this.verified = { ...toTerminal(spec), id: next.id };
+    this.deps.debug?.(`trying terminal: ${spec.displayName} (${spec.binary})`);
+    return this.verified;
   }
 }

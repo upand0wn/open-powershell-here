@@ -109,5 +109,48 @@ describe('TerminalManager', () => {
       expect(finder.invalidate).toHaveBeenCalledTimes(1);
       expect(launch).toHaveBeenCalledTimes(2);
     });
+
+    it('gives up after one retry when the finder cannot reject candidates', async () => {
+      const term: ResolvedTerminal = { id: 'powershell', displayName: 'PowerShell', binaryPath: 'pwsh.exe' };
+      const finder: TerminalFinder = {
+        cached: term,
+        resolve: vi.fn().mockResolvedValue(term),
+        invalidate: vi.fn(),
+      };
+      const launch = vi.fn().mockResolvedValue({ ok: false, code: 'ENOENT', error: new Error('missing') });
+
+      const manager = new TerminalManager({ platform: 'win32', finder, launch });
+      expect((await manager.launch('C:\\vault')).kind).toBe('failed');
+      expect(launch).toHaveBeenCalledTimes(2);
+    });
+
+    it('tries each candidate in turn when the finder supports reject', async () => {
+      const queue: ResolvedTerminal[] = ['xdg-terminal-exec', 'alacritty', 'konsole'].map((id) => ({
+        id,
+        displayName: id,
+        binaryPath: id,
+      }));
+      const finder: TerminalFinder = {
+        cached: null,
+        resolve: vi.fn().mockImplementation(async () => queue[0] ?? null),
+        invalidate: vi.fn(),
+        reject: vi.fn().mockImplementation(() => {
+          queue.shift();
+        }),
+      };
+      const launch = vi.fn().mockImplementation(async (term: ResolvedTerminal) =>
+        term.id === 'konsole'
+          ? { ok: true, pid: 1 }
+          : { ok: false, code: 'ENOENT', error: new Error('missing') },
+      );
+
+      const manager = new TerminalManager({ platform: 'linux', finder, launch });
+      expect(await manager.launch('/vault')).toEqual({ kind: 'success' });
+      expect(launch).toHaveBeenCalledTimes(3);
+      expect(finder.invalidate).not.toHaveBeenCalled();
+
+      queue.length = 0;
+      expect(await manager.launch('/vault')).toEqual({ kind: 'not_found', platform: 'linux' });
+    });
   });
 });

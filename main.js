@@ -321,8 +321,6 @@ function launchInteractive(verified, targetDir) {
 }
 
 // src/terminals/linux/finder.ts
-var import_promises = require("node:fs/promises");
-var import_node_fs = require("node:fs");
 var import_node_path2 = require("node:path");
 
 // src/terminals/linux/candidates.ts
@@ -416,22 +414,35 @@ var LINUX_TERMINALS = [
   }
 ];
 
-// src/terminals/linux/finder.ts
-async function defaultCheckExecutable(filePath) {
-  try {
-    await (0, import_promises.access)(filePath, import_node_fs.constants.X_OK);
-    return true;
-  } catch (e) {
-    return false;
-  }
+// src/terminals/linux/alternatives.ts
+var import_node_child_process3 = require("node:child_process");
+var QUERY_TIMEOUT_MS = 5e3;
+function queryAlternative(name) {
+  return new Promise((resolve) => {
+    try {
+      (0, import_node_child_process3.execFile)(
+        "update-alternatives",
+        ["--query", name],
+        { shell: false, timeout: QUERY_TIMEOUT_MS, encoding: "utf8", env: process.env },
+        (error, stdout) => {
+          resolve(error === null ? parseAlternativeValue(stdout) : null);
+        }
+      );
+    } catch (e) {
+      resolve(null);
+    }
+  });
 }
-async function defaultResolveRealPath(filePath) {
-  try {
-    return await (0, import_promises.realpath)(filePath);
-  } catch (e) {
+function parseAlternativeValue(output) {
+  const match = /^Value:[ \t]*(\S.*)$/m.exec(output);
+  if (match === null) {
     return null;
   }
+  const value = match[1].trim();
+  return value === "" || value === "none" ? null : value;
 }
+
+// src/terminals/linux/finder.ts
 function matchesPreferredTerminal(spec, normalizedPreferred) {
   var _a;
   if (spec.id.toLowerCase() === normalizedPreferred) {
@@ -442,18 +453,20 @@ function matchesPreferredTerminal(spec, normalizedPreferred) {
   }
   return ((_a = spec.aliases) != null ? _a : []).some((alias) => alias.toLowerCase() === normalizedPreferred);
 }
+function toTerminal(spec) {
+  return { id: spec.id, displayName: spec.displayName, binaryPath: spec.binary, extra: { spec } };
+}
 var LinuxTerminalFinder = class {
   constructor(deps) {
     this.verified = null;
     this.currentPreferredId = null;
     this.resolving = null;
-    var _a, _b, _c, _d;
+    this.rejected = /* @__PURE__ */ new Set();
+    var _a, _b, _c;
     this.deps = {
       specs: (_a = deps == null ? void 0 : deps.specs) != null ? _a : LINUX_TERMINALS,
-      checkExecutable: (_b = deps == null ? void 0 : deps.checkExecutable) != null ? _b : defaultCheckExecutable,
-      resolveRealPath: (_c = deps == null ? void 0 : deps.resolveRealPath) != null ? _c : defaultResolveRealPath,
-      env: deps == null ? void 0 : deps.env,
-      debug: (_d = deps == null ? void 0 : deps.debug) != null ? _d : ((msg) => console.debug(`[Native Terminal Here] ${msg}`))
+      queryAlternative: (_b = deps == null ? void 0 : deps.queryAlternative) != null ? _b : queryAlternative,
+      debug: (_c = deps == null ? void 0 : deps.debug) != null ? _c : ((msg) => console.debug(`[Native Terminal Here] ${msg}`))
     };
   }
   get cached() {
@@ -482,88 +495,64 @@ var LinuxTerminalFinder = class {
     });
     return this.resolving;
   }
+  /** `terminal` could not be started: skip it and offer the next candidate. */
+  reject(terminal) {
+    var _a, _b;
+    this.rejected.add(terminal.id);
+    this.verified = null;
+    (_b = (_a = this.deps).debug) == null ? void 0 : _b.call(_a, `rejected terminal ${terminal.displayName} (${terminal.binaryPath})`);
+  }
   invalidate() {
     this.verified = null;
-  }
-  pathDirs() {
-    var _a, _b;
-    const pathEnv = (_b = ((_a = this.deps.env) != null ? _a : process.env).PATH) != null ? _b : "";
-    return pathEnv.split(":").filter(Boolean);
-  }
-  async locate(spec) {
-    for (const dir of this.pathDirs()) {
-      const fullPath = import_node_path2.posix.join(dir, spec.binary);
-      if (await this.deps.checkExecutable(fullPath)) {
-        return {
-          id: spec.id,
-          displayName: spec.displayName,
-          binaryPath: fullPath,
-          extra: { spec }
-        };
-      }
-    }
-    return null;
+    this.rejected.clear();
   }
   /**
    * Follow a system-default link (e.g. `x-terminal-emulator`) to the
-   * terminal it points at. Returns that terminal when it is a supported one
-   * found on `PATH`, so it is launched with its own working-directory flag;
-   * otherwise returns the link itself.
+   * terminal it points at. Returns that terminal when it is a supported
+   * one, so it is launched with its own working-directory flag; otherwise
+   * returns the link itself.
    */
   async followSystemDefault(link) {
-    var _a;
-    const realPath = await this.deps.resolveRealPath(link.binaryPath);
-    if (realPath === null) {
+    const targetPath = await this.deps.queryAlternative(link.binary);
+    if (targetPath === null) {
       return link;
     }
-    const target = import_node_path2.posix.basename(realPath).replace(/\.wrapper$/, "");
+    const target = import_node_path2.posix.basename(targetPath).replace(/\.wrapper$/, "");
     const match = this.deps.specs.find(
-      (s) => s.systemDefaultLink !== true && s.binary === target
+      (s) => s.systemDefaultLink !== true && s.binary === target && !this.rejected.has(s.id)
     );
-    if (match === void 0) {
-      return link;
-    }
-    return (_a = await this.locate(match)) != null ? _a : link;
+    return match != null ? match : link;
   }
   async findBest(preferredId) {
-    var _a, _b, _c, _d, _e, _f, _g, _h;
-    if (preferredId !== null && preferredId !== void 0 && preferredId !== "auto" && preferredId !== "") {
+    var _a, _b;
+    const candidates = [...this.deps.specs];
+    if (preferredId !== null && preferredId !== "auto" && preferredId !== "") {
       const normalizedPreferred = preferredId.toLowerCase().replace(/^terminal-choice-/, "");
       const match = this.deps.specs.find((s) => matchesPreferredTerminal(s, normalizedPreferred));
       if (match !== void 0) {
-        const found = await this.locate(match);
-        if (found !== null) {
-          this.verified = found;
-          (_b = (_a = this.deps).debug) == null ? void 0 : _b.call(_a, `found preferred terminal: ${match.displayName} at ${found.binaryPath}`);
-          return this.verified;
-        }
-        (_d = (_c = this.deps).debug) == null ? void 0 : _d.call(_c, `preferred terminal ${match.displayName} not found on system`);
+        candidates.unshift(match);
       }
     }
-    for (const spec of this.deps.specs) {
-      const found = await this.locate(spec);
-      if (found !== null) {
-        this.verified = spec.systemDefaultLink === true ? await this.followSystemDefault(found) : found;
-        (_f = (_e = this.deps).debug) == null ? void 0 : _f.call(
-          _e,
-          `found terminal: ${this.verified.displayName} at ${this.verified.binaryPath}`
-        );
-        return this.verified;
-      }
-      (_h = (_g = this.deps).debug) == null ? void 0 : _h.call(_g, `rejected terminal ${spec.displayName} (${spec.binary})`);
+    const next = candidates.find((s) => !this.rejected.has(s.id));
+    if (next === void 0) {
+      this.rejected.clear();
+      return null;
     }
-    return null;
+    const spec = next.systemDefaultLink === true ? await this.followSystemDefault(next) : next;
+    this.verified = { ...toTerminal(spec), id: next.id };
+    (_b = (_a = this.deps).debug) == null ? void 0 : _b.call(_a, `trying terminal: ${spec.displayName} (${spec.binary})`);
+    return this.verified;
   }
 };
 
 // src/terminals/spawn-detached.ts
-var import_node_child_process3 = require("node:child_process");
+var import_node_child_process4 = require("node:child_process");
 function spawnDetached(executable, args, targetDir) {
   return new Promise((resolve) => {
     let settled = false;
     let child;
     try {
-      child = (0, import_node_child_process3.spawn)(executable, args, {
+      child = (0, import_node_child_process4.spawn)(executable, args, {
         cwd: targetDir,
         env: process.env,
         shell: false,
@@ -607,8 +596,6 @@ function launchLinuxTerminal(terminal, targetDir) {
 }
 
 // src/terminals/macos/finder.ts
-var import_promises2 = require("node:fs/promises");
-var import_node_fs2 = require("node:fs");
 var import_node_path3 = require("node:path");
 
 // src/terminals/macos/candidates.ts
@@ -642,26 +629,18 @@ var MAC_TERMINALS = [
 ];
 
 // src/terminals/macos/finder.ts
-async function defaultCheckExists(filePath) {
-  try {
-    await (0, import_promises2.access)(filePath, import_node_fs2.constants.F_OK);
-    return true;
-  } catch (e) {
-    return false;
-  }
-}
 var MacTerminalFinder = class {
   constructor(deps) {
     this.verified = null;
     this.currentPreferredId = null;
     this.resolving = null;
-    var _a, _b, _c, _d;
+    this.rejected = /* @__PURE__ */ new Set();
+    var _a, _b, _c;
     this.deps = {
       specs: (_a = deps == null ? void 0 : deps.specs) != null ? _a : MAC_TERMINALS,
       appDirs: (_b = deps == null ? void 0 : deps.appDirs) != null ? _b : MAC_APP_DIRS,
-      checkExists: (_c = deps == null ? void 0 : deps.checkExists) != null ? _c : defaultCheckExists,
       env: deps == null ? void 0 : deps.env,
-      debug: (_d = deps == null ? void 0 : deps.debug) != null ? _d : ((msg) => console.debug(`[Native Terminal Here] ${msg}`))
+      debug: (_c = deps == null ? void 0 : deps.debug) != null ? _c : ((msg) => console.debug(`[Native Terminal Here] ${msg}`))
     };
   }
   get cached() {
@@ -680,13 +659,24 @@ var MacTerminalFinder = class {
     if (this.resolving !== null) {
       return this.resolving;
     }
-    this.resolving = this.findBest(this.currentPreferredId).finally(() => {
+    this.resolving = Promise.resolve(this.findBest(this.currentPreferredId)).finally(() => {
       this.resolving = null;
     });
     return this.resolving;
   }
+  /** `terminal` could not be opened: skip it and offer the next candidate. */
+  reject(terminal) {
+    var _a, _b, _c;
+    const appPath = (_a = terminal.extra) == null ? void 0 : _a.appPath;
+    if (typeof appPath === "string") {
+      this.rejected.add(appPath);
+    }
+    this.verified = null;
+    (_c = (_b = this.deps).debug) == null ? void 0 : _c.call(_b, `rejected terminal ${terminal.displayName} (${String(appPath)})`);
+  }
   invalidate() {
     this.verified = null;
+    this.rejected.clear();
   }
   searchDirs() {
     var _a;
@@ -697,49 +687,39 @@ var MacTerminalFinder = class {
     }
     return dirs;
   }
-  async locate(spec) {
-    for (const dir of this.searchDirs()) {
-      const appPath = import_node_path3.posix.join(dir, spec.appBundle);
-      if (await this.deps.checkExists(appPath)) {
-        return {
-          id: spec.id,
-          displayName: spec.displayName,
-          binaryPath: MAC_OPEN_BINARY,
-          extra: { spec, appPath }
-        };
-      }
-    }
-    return null;
-  }
-  async findBest(preferredId) {
-    var _a, _b, _c, _d, _e, _f, _g, _h;
+  findBest(preferredId) {
+    var _a, _b;
+    const specs = [...this.deps.specs];
     if (preferredId !== null && preferredId !== "auto" && preferredId !== "") {
       const normalizedPreferred = preferredId.toLowerCase().replace(/^terminal-choice-/, "");
       const match = this.deps.specs.find((s) => s.id === normalizedPreferred);
       if (match !== void 0) {
-        const found = await this.locate(match);
-        if (found !== null) {
-          this.verified = found;
-          (_b = (_a = this.deps).debug) == null ? void 0 : _b.call(_a, `found preferred terminal: ${match.displayName}`);
+        specs.unshift(match);
+      }
+    }
+    for (const spec of specs) {
+      for (const dir of this.searchDirs()) {
+        const appPath = import_node_path3.posix.join(dir, spec.appBundle);
+        if (!this.rejected.has(appPath)) {
+          this.verified = {
+            id: spec.id,
+            displayName: spec.displayName,
+            binaryPath: MAC_OPEN_BINARY,
+            extra: { spec, appPath }
+          };
+          (_b = (_a = this.deps).debug) == null ? void 0 : _b.call(_a, `trying terminal: ${spec.displayName} (${appPath})`);
           return this.verified;
         }
-        (_d = (_c = this.deps).debug) == null ? void 0 : _d.call(_c, `preferred terminal ${match.displayName} not found on system`);
       }
     }
-    for (const spec of this.deps.specs) {
-      const found = await this.locate(spec);
-      if (found !== null) {
-        this.verified = found;
-        (_f = (_e = this.deps).debug) == null ? void 0 : _f.call(_e, `found terminal: ${spec.displayName}`);
-        return this.verified;
-      }
-      (_h = (_g = this.deps).debug) == null ? void 0 : _h.call(_g, `rejected terminal ${spec.displayName} (${spec.appBundle})`);
-    }
+    this.rejected.clear();
     return null;
   }
 };
 
 // src/terminals/macos/launcher.ts
+var import_node_child_process5 = require("node:child_process");
+var OPEN_TIMEOUT_MS = 1e4;
 function launchMacTerminal(terminal, targetDir) {
   var _a, _b;
   const spec = (_a = terminal.extra) == null ? void 0 : _a.spec;
@@ -751,10 +731,34 @@ function launchMacTerminal(terminal, targetDir) {
       error: new Error("Resolved macOS terminal is missing its app bundle path.")
     });
   }
-  return spawnDetached(terminal.binaryPath, spec.buildArgs(appPath, targetDir), targetDir);
+  return new Promise((resolve) => {
+    try {
+      const child = (0, import_node_child_process5.execFile)(
+        terminal.binaryPath,
+        spec.buildArgs(appPath, targetDir),
+        { cwd: targetDir, env: process.env, shell: false, timeout: OPEN_TIMEOUT_MS },
+        (error) => {
+          var _a2;
+          if (error === null) {
+            resolve({ ok: true, pid: (_a2 = child.pid) != null ? _a2 : 0 });
+            return;
+          }
+          const code = error.code;
+          resolve({
+            ok: false,
+            code: code === "ENOENT" || typeof code === "number" ? "ENOENT" : "UNKNOWN",
+            error
+          });
+        }
+      );
+    } catch (error) {
+      resolve({ ok: false, code: "UNKNOWN", error });
+    }
+  });
 }
 
 // src/terminals/manager.ts
+var MAX_LAUNCH_ATTEMPTS = 32;
 var TerminalManager = class {
   constructor(deps) {
     this.explicitPreferredTerminal = null;
@@ -832,27 +836,28 @@ var TerminalManager = class {
     }
     const preferred = preferredTerminal != null ? preferredTerminal : this.detectPreferredTerminalFromDom();
     (_b = (_a = this.finder).setPreferredTerminal) == null ? void 0 : _b.call(_a, preferred);
-    const verified = await this.finder.resolve();
-    if (verified === null) {
-      return { kind: "not_found", platform: this.platform };
-    }
-    const outcome = await this.launcher(verified, targetDir);
-    if (outcome.ok) {
-      return { kind: "success" };
-    }
-    if (outcome.code === "ENOENT") {
-      this.finder.invalidate();
-      const reVerified = await this.finder.resolve();
-      if (reVerified === null) {
+    let verified = await this.finder.resolve();
+    for (let attempt = 0; attempt < MAX_LAUNCH_ATTEMPTS; attempt++) {
+      if (verified === null) {
         return { kind: "not_found", platform: this.platform };
       }
-      const retry = await this.launcher(reVerified, targetDir);
-      if (retry.ok) {
+      const outcome = await this.launcher(verified, targetDir);
+      if (outcome.ok) {
         return { kind: "success" };
       }
-      return { kind: "failed", error: retry.error };
+      if (outcome.code !== "ENOENT") {
+        return { kind: "failed", error: outcome.error };
+      }
+      if (this.finder.reject !== void 0) {
+        this.finder.reject(verified);
+      } else if (attempt === 0) {
+        this.finder.invalidate();
+      } else {
+        return { kind: "failed", error: outcome.error };
+      }
+      verified = await this.finder.resolve();
     }
-    return { kind: "failed", error: outcome.error };
+    return { kind: "not_found", platform: this.platform };
   }
 };
 

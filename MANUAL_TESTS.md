@@ -113,6 +113,7 @@ context-menu entry manually verified (core items); edge items pending
 | L8 | Ubuntu 24.04 回归 | Ubuntu 24.04 + GNOME Terminal 重复 L1/L2 | gnome-terminal 正常打开且目录正确 | 未执行 |
 | L10 | 已装 Ghostty/Kitty 时仍用系统默认 | Auto-detect，系统默认为 Ptyxis 且同时安装了 Kitty 或 Ghostty，点击 Ribbon | 打开系统默认终端，而不是 Kitty/Ghostty | 未执行 |
 | L11 | x-terminal-emulator 跟随 | 无 `xdg-terminal-exec` 的 Debian/Ubuntu（如 24.04），Auto-detect 点击 Ribbon | 打开 `update-alternatives` 指定的默认终端且目录正确 | 未执行 |
+| L12 | 移除 `node:fs` 后的回归（2026-10-03） | 用“按顺序直接尝试启动”的新实现重复 L1 / L2 / L6，并在未安装 `xdg-terminal-exec` 的机器上点击一次 | 行为与之前一致；首次点击依次跳过未安装的候选后打开终端，之后的点击直接使用已成功的终端 | 未执行（自动化测试 + 桩终端脚本化验证覆盖，未在真实 Obsidian 中验证） |
 | L9 | Kitty 适配 | 使用 Kitty 作为终端，分别从 Ribbon 与右键菜单打开 | Kitty 窗口打开且目录正确 | **通过**（2026-10-02 用户实测，完全适配） |
 
 已确认的实机事实（2026-09-26，Ubuntu 26.04.1 LTS，Ptyxis 50.1）：

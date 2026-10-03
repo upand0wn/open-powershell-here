@@ -59,12 +59,13 @@ If you use the [Style Settings](https://obsidian.md/plugins?id=obsidian-style-se
 
 ## 🔐 Permissions & Security
 
-Obsidian's automated plugin review reports two capability warnings for this plugin. Both are inherent to opening a terminal at a folder, and both are limited to that purpose.
+Obsidian's automated plugin review reports one capability warning for this plugin. It is inherent to opening a terminal at a folder, and it is limited to that purpose.
 
 | Capability | Why it is needed | What it does **not** do |
 | :--- | :--- | :--- |
-| **Direct filesystem access** (`node:fs`, Linux and macOS) | Checks whether a terminal emulator exists and is executable while scanning `PATH` on Linux (for example `ghostty`, `ptyxis`, `gnome-terminal`), or whether a terminal app bundle exists on macOS (for example `Terminal.app`). On Windows, `pwsh` candidates are verified by launching them with a hidden version probe instead. | Does not read or write any file, inside or outside your vault; no file contents are accessed. |
-| **Shell execution** (`child_process`) | Launches the selected terminal as a detached process: PowerShell 7+ on Windows (hosted in Windows Terminal when available), the detected terminal emulator on Linux, or the terminal app via `/usr/bin/open` on macOS. | No shell is involved (`shell: false`); no command strings are built; the target folder is passed as a separate argument and as the process working directory; the terminal session is never read, written, or monitored. |
+| **Shell execution** (`child_process`) | Launches the selected terminal as a detached process: PowerShell 7+ on Windows (hosted in Windows Terminal when available), the terminal emulator on Linux, or the terminal app via `/usr/bin/open` on macOS. To find out which terminal is installed, candidates are simply started in order until one succeeds; on Windows `pwsh` candidates are verified with a hidden version probe, and on Debian/Ubuntu `update-alternatives --query x-terminal-emulator` is run to identify the default terminal. | No shell is involved (`shell: false`); no command strings are built; the target folder is passed as a separate argument and as the process working directory; the terminal session is never read, written, or monitored. |
+
+The plugin does **not** use the Node.js `fs` module: it never reads, writes, or checks any file, inside or outside your vault.
 
 The plugin does not connect to the network, does not collect telemetry, and does not write logs.
 

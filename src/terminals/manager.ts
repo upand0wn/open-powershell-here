@@ -21,6 +21,9 @@ export interface TerminalManagerDeps {
   readonly launch?: (terminal: ResolvedTerminal, targetDir: string) => Promise<LaunchOutcome>;
 }
 
+/** Upper bound on launch attempts per click (candidates are far fewer). */
+const MAX_LAUNCH_ATTEMPTS = 32;
+
 export class TerminalManager {
   readonly platform: NodeJS.Platform;
   readonly finder: TerminalFinder | null;
@@ -110,29 +113,32 @@ export class TerminalManager {
     const preferred = preferredTerminal ?? this.detectPreferredTerminalFromDom();
     this.finder.setPreferredTerminal?.(preferred);
 
-    const verified = await this.finder.resolve();
-    if (verified === null) {
-      return { kind: 'not_found', platform: this.platform };
-    }
-
-    const outcome = await this.launcher(verified, targetDir);
-    if (outcome.ok) {
-      return { kind: 'success' };
-    }
-
-    if (outcome.code === 'ENOENT') {
-      this.finder.invalidate();
-      const reVerified = await this.finder.resolve();
-      if (reVerified === null) {
+    let verified = await this.finder.resolve();
+    for (let attempt = 0; attempt < MAX_LAUNCH_ATTEMPTS; attempt++) {
+      if (verified === null) {
         return { kind: 'not_found', platform: this.platform };
       }
-      const retry = await this.launcher(reVerified, targetDir);
-      if (retry.ok) {
+
+      const outcome = await this.launcher(verified, targetDir);
+      if (outcome.ok) {
         return { kind: 'success' };
       }
-      return { kind: 'failed', error: retry.error };
+      if (outcome.code !== 'ENOENT') {
+        return { kind: 'failed', error: outcome.error };
+      }
+
+      if (this.finder.reject !== undefined) {
+        // Linux / macOS: the candidate is not installed, move on to the next.
+        this.finder.reject(verified);
+      } else if (attempt === 0) {
+        // Windows: the cached terminal went away, re-verify and retry once.
+        this.finder.invalidate();
+      } else {
+        return { kind: 'failed', error: outcome.error };
+      }
+      verified = await this.finder.resolve();
     }
 
-    return { kind: 'failed', error: outcome.error };
+    return { kind: 'not_found', platform: this.platform };
   }
 }
