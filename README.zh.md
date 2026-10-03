@@ -19,8 +19,6 @@
 
 Linux 下插件优先使用系统的默认终端（通过 `xdg-terminal-exec`，或 Debian/Ubuntu 的 `x-terminal-emulator` 替代项）。只有在无法确定默认终端时，才回退到 Alacritty、Foot、Ghostty、GNOME Terminal、GNOME Console、Kitty、Konsole、Ptyxis、WezTerm、XFCE4 Terminal 中第一个已安装的终端（按字母顺序，不偏向任何一个）。如需固定使用某一个，可在 **Style Settings → Preferred Terminal** 中选择。
 
-**Kitty** 在 Linux 下已完全适配：侧边栏按钮与右键菜单均可在目标目录中打开 Kitty，并可在 **Style Settings → Preferred Terminal** 中选择。
-
 > ⚠️ **macOS 支持未经实机验证。** macOS 代码路径仅有自动化测试覆盖，**没有在真实 Mac 上验证过效果**。默认在目标目录打开系统自带的 Terminal.app；在 **Style Settings → Preferred Terminal** 中选择 Ghostty 或 Kitty 且其安装在 `/Applications` 或 `~/Applications` 时，则使用所选终端。如果无法正常工作，欢迎[提交 issue](https://github.com/upand0wn/open-powershell-here/issues)。
 
 ---
