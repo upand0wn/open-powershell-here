@@ -4,6 +4,8 @@ import { launchInteractive as launchWindowsInteractive } from './windows/launche
 import type { VerifiedPowerShell } from './windows/types';
 import { LinuxTerminalFinder } from './linux/finder';
 import { launchLinuxTerminal } from './linux/launcher';
+import { MacTerminalFinder } from './macos/finder';
+import { launchMacTerminal } from './macos/launcher';
 
 export type TerminalLaunchResult =
   | { readonly kind: 'success' }
@@ -34,6 +36,8 @@ export class TerminalManager {
       this.finder = new PowerShellFinder();
     } else if (this.platform === 'linux') {
       this.finder = new LinuxTerminalFinder();
+    } else if (this.platform === 'darwin') {
+      this.finder = new MacTerminalFinder();
     } else {
       this.finder = null;
     }
@@ -50,13 +54,15 @@ export class TerminalManager {
       };
     } else if (this.platform === 'linux') {
       this.launcher = (term, dir) => launchLinuxTerminal(term, dir);
+    } else if (this.platform === 'darwin') {
+      this.launcher = (term, dir) => launchMacTerminal(term, dir);
     } else {
       this.launcher = null;
     }
   }
 
   isPlatformSupported(): boolean {
-    return this.platform === 'win32' || this.platform === 'linux';
+    return this.platform === 'win32' || this.platform === 'linux' || this.platform === 'darwin';
   }
 
   getMenuTitle(): string {
@@ -69,9 +75,7 @@ export class TerminalManager {
 
   setPreferredTerminal(id: string | null): void {
     this.explicitPreferredTerminal = id;
-    if (this.finder instanceof LinuxTerminalFinder) {
-      this.finder.setPreferredTerminal(id);
-    }
+    this.finder?.setPreferredTerminal?.(id);
   }
 
   detectPreferredTerminalFromDom(): string | null {
@@ -104,9 +108,7 @@ export class TerminalManager {
     }
 
     const preferred = preferredTerminal ?? this.detectPreferredTerminalFromDom();
-    if (this.finder instanceof LinuxTerminalFinder) {
-      this.finder.setPreferredTerminal(preferred);
-    }
+    this.finder.setPreferredTerminal?.(preferred);
 
     const verified = await this.finder.resolve();
     if (verified === null) {

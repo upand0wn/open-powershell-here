@@ -16,10 +16,11 @@ function mockFinder(resolved: ResolvedTerminal | null = null): TerminalFinder {
 }
 
 describe('TerminalManager', () => {
-  it('supports win32 and linux, rejects other platforms', () => {
+  it('supports win32, linux and darwin, rejects other platforms', () => {
     expect(new TerminalManager({ platform: 'win32' }).isPlatformSupported()).toBe(true);
     expect(new TerminalManager({ platform: 'linux' }).isPlatformSupported()).toBe(true);
-    expect(new TerminalManager({ platform: 'darwin' }).isPlatformSupported()).toBe(false);
+    expect(new TerminalManager({ platform: 'darwin' }).isPlatformSupported()).toBe(true);
+    expect(new TerminalManager({ platform: 'freebsd' }).isPlatformSupported()).toBe(false);
   });
 
   describe('titles and tooltips', () => {
@@ -36,9 +37,9 @@ describe('TerminalManager', () => {
 
   describe('launch flow and guards', () => {
     it('returns unsupported_platform on unsupported OS', async () => {
-      const manager = new TerminalManager({ platform: 'darwin' });
+      const manager = new TerminalManager({ platform: 'freebsd' });
       const result = await manager.launch('/vault');
-      expect(result).toEqual({ kind: 'unsupported_platform', platform: 'darwin' });
+      expect(result).toEqual({ kind: 'unsupported_platform', platform: 'freebsd' });
     });
 
     it('returns no_target_path when path is null', async () => {
@@ -64,6 +65,18 @@ describe('TerminalManager', () => {
         expect.objectContaining({ id: 'ghostty' }),
         '/home/user/Odd;Vault',
       );
+    });
+
+    it('forwards the preferred terminal to finders that support it (macOS)', async () => {
+      const finder = {
+        ...mockFinder({ id: 'kitty', displayName: 'Kitty', binaryPath: '/usr/bin/open' }),
+        setPreferredTerminal: vi.fn(),
+      };
+      const launch = vi.fn().mockResolvedValue({ ok: true, pid: 1 });
+      const manager = new TerminalManager({ platform: 'darwin', finder, launch });
+      expect(await manager.launch('/Users/me/Odd;Vault', 'kitty')).toEqual({ kind: 'success' });
+      expect(finder.setPreferredTerminal).toHaveBeenCalledWith('kitty');
+      expect(launch).toHaveBeenCalledWith(expect.objectContaining({ id: 'kitty' }), '/Users/me/Odd;Vault');
     });
 
     it('returns not_found when finder cannot find any terminal', async () => {

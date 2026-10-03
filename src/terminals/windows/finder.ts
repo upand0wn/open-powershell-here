@@ -21,7 +21,7 @@ export class PowerShellFinder implements TerminalFinder {
       buildCandidates: deps?.buildCandidates ?? buildCandidates,
       probeMajorVersion: deps?.probeMajorVersion ?? probeMajorVersion,
       env: deps?.env,
-      debug: deps?.debug ?? ((msg) => console.debug(`[Open Terminal Here] ${msg}`)),
+      debug: deps?.debug ?? ((msg) => console.debug(`[Native Terminal Here] ${msg}`)),
     };
   }
 

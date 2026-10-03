@@ -26,6 +26,7 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 var main_exports = {};
 __export(main_exports, {
   NOTICE_NOT_FOUND_LINUX: () => NOTICE_NOT_FOUND_LINUX,
+  NOTICE_NOT_FOUND_MACOS: () => NOTICE_NOT_FOUND_MACOS,
   NOTICE_NOT_FOUND_WINDOWS: () => NOTICE_NOT_FOUND_WINDOWS,
   NOTICE_NO_VAULT_PATH: () => NOTICE_NO_VAULT_PATH,
   NOTICE_SEMICOLON: () => NOTICE_SEMICOLON,
@@ -191,7 +192,7 @@ var PowerShellFinder = class {
       buildCandidates: (_a = deps == null ? void 0 : deps.buildCandidates) != null ? _a : buildCandidates,
       probeMajorVersion: (_b = deps == null ? void 0 : deps.probeMajorVersion) != null ? _b : probeMajorVersion,
       env: deps == null ? void 0 : deps.env,
-      debug: (_c = deps == null ? void 0 : deps.debug) != null ? _c : ((msg) => console.debug(`[Open Terminal Here] ${msg}`))
+      debug: (_c = deps == null ? void 0 : deps.debug) != null ? _c : ((msg) => console.debug(`[Native Terminal Here] ${msg}`))
     };
   }
   get cached() {
@@ -327,12 +328,6 @@ var import_node_path2 = require("node:path");
 // src/terminals/linux/candidates.ts
 var LINUX_TERMINALS = [
   {
-    id: "ghostty",
-    displayName: "Ghostty",
-    binary: "ghostty",
-    buildArgs: (dir) => [`--working-directory=${dir}`]
-  },
-  {
     id: "xdg-terminal-exec",
     displayName: "System Default (xdg-terminal-exec)",
     binary: "xdg-terminal-exec",
@@ -342,22 +337,54 @@ var LINUX_TERMINALS = [
     buildArgs: (dir) => [`--dir=${dir}`]
   },
   {
+    id: "x-terminal-emulator",
+    displayName: "Terminal",
+    binary: "x-terminal-emulator",
+    // Debian/Ubuntu alternatives link to the system default terminal. The
+    // finder follows the link and, when it points at a terminal listed
+    // below, launches that terminal with its own working-directory flag.
+    // Otherwise the target is unknown and no flag is portable, so the
+    // launcher's `cwd` is the only way the directory is conveyed.
+    buildArgs: () => [],
+    systemDefaultLink: true
+  },
+  {
     id: "alacritty",
     displayName: "Alacritty",
     binary: "alacritty",
     buildArgs: (dir) => ["--working-directory", dir]
   },
   {
+    id: "foot",
+    displayName: "Foot",
+    binary: "foot",
+    buildArgs: (dir) => ["-D", dir]
+  },
+  {
+    id: "ghostty",
+    displayName: "Ghostty",
+    binary: "ghostty",
+    buildArgs: (dir) => [`--working-directory=${dir}`]
+  },
+  {
+    id: "gnome-terminal",
+    displayName: "GNOME Terminal",
+    binary: "gnome-terminal",
+    buildArgs: (dir) => [`--working-directory=${dir}`],
+    aliases: ["gnome"]
+  },
+  {
+    id: "kgx",
+    displayName: "GNOME Console",
+    binary: "kgx",
+    buildArgs: (dir) => [`--working-directory=${dir}`],
+    aliases: ["gnome-console"]
+  },
+  {
     id: "kitty",
     displayName: "Kitty",
     binary: "kitty",
     buildArgs: (dir) => ["--directory", dir]
-  },
-  {
-    id: "wezterm",
-    displayName: "WezTerm",
-    binary: "wezterm",
-    buildArgs: (dir) => ["start", "--cwd", dir]
   },
   {
     id: "konsole",
@@ -375,18 +402,10 @@ var LINUX_TERMINALS = [
     buildArgs: (dir) => ["--new-window", `--working-directory=${dir}`]
   },
   {
-    id: "gnome-terminal",
-    displayName: "GNOME Terminal",
-    binary: "gnome-terminal",
-    buildArgs: (dir) => [`--working-directory=${dir}`],
-    aliases: ["gnome"]
-  },
-  {
-    id: "kgx",
-    displayName: "GNOME Console",
-    binary: "kgx",
-    buildArgs: (dir) => [`--working-directory=${dir}`],
-    aliases: ["gnome-console"]
+    id: "wezterm",
+    displayName: "WezTerm",
+    binary: "wezterm",
+    buildArgs: (dir) => ["start", "--cwd", dir]
   },
   {
     id: "xfce4-terminal",
@@ -394,18 +413,6 @@ var LINUX_TERMINALS = [
     binary: "xfce4-terminal",
     buildArgs: (dir) => [`--working-directory=${dir}`],
     aliases: ["xfce4"]
-  },
-  {
-    id: "foot",
-    displayName: "Foot",
-    binary: "foot",
-    buildArgs: (dir) => ["-D", dir]
-  },
-  {
-    id: "x-terminal-emulator",
-    displayName: "Terminal",
-    binary: "x-terminal-emulator",
-    buildArgs: () => []
   }
 ];
 
@@ -416,6 +423,13 @@ async function defaultCheckExecutable(filePath) {
     return true;
   } catch (e) {
     return false;
+  }
+}
+async function defaultResolveRealPath(filePath) {
+  try {
+    return await (0, import_promises.realpath)(filePath);
+  } catch (e) {
+    return null;
   }
 }
 function matchesPreferredTerminal(spec, normalizedPreferred) {
@@ -433,12 +447,13 @@ var LinuxTerminalFinder = class {
     this.verified = null;
     this.currentPreferredId = null;
     this.resolving = null;
-    var _a, _b, _c;
+    var _a, _b, _c, _d;
     this.deps = {
       specs: (_a = deps == null ? void 0 : deps.specs) != null ? _a : LINUX_TERMINALS,
       checkExecutable: (_b = deps == null ? void 0 : deps.checkExecutable) != null ? _b : defaultCheckExecutable,
+      resolveRealPath: (_c = deps == null ? void 0 : deps.resolveRealPath) != null ? _c : defaultResolveRealPath,
       env: deps == null ? void 0 : deps.env,
-      debug: (_c = deps == null ? void 0 : deps.debug) != null ? _c : ((msg) => console.debug(`[Open Terminal Here] ${msg}`))
+      debug: (_d = deps == null ? void 0 : deps.debug) != null ? _d : ((msg) => console.debug(`[Native Terminal Here] ${msg}`))
     };
   }
   get cached() {
@@ -470,80 +485,85 @@ var LinuxTerminalFinder = class {
   invalidate() {
     this.verified = null;
   }
-  async listInstalledTerminals() {
+  pathDirs() {
     var _a, _b;
     const pathEnv = (_b = ((_a = this.deps.env) != null ? _a : process.env).PATH) != null ? _b : "";
-    const dirs = pathEnv.split(":").filter(Boolean);
-    const installed = [];
-    for (const spec of this.deps.specs) {
-      for (const dir of dirs) {
-        const fullPath = import_node_path2.posix.join(dir, spec.binary);
-        const isExecutable = await this.deps.checkExecutable(fullPath);
-        if (isExecutable) {
-          installed.push({ spec, binaryPath: fullPath });
-          break;
-        }
+    return pathEnv.split(":").filter(Boolean);
+  }
+  async locate(spec) {
+    for (const dir of this.pathDirs()) {
+      const fullPath = import_node_path2.posix.join(dir, spec.binary);
+      if (await this.deps.checkExecutable(fullPath)) {
+        return {
+          id: spec.id,
+          displayName: spec.displayName,
+          binaryPath: fullPath,
+          extra: { spec }
+        };
       }
     }
-    return installed;
+    return null;
+  }
+  /**
+   * Follow a system-default link (e.g. `x-terminal-emulator`) to the
+   * terminal it points at. Returns that terminal when it is a supported one
+   * found on `PATH`, so it is launched with its own working-directory flag;
+   * otherwise returns the link itself.
+   */
+  async followSystemDefault(link) {
+    var _a;
+    const realPath = await this.deps.resolveRealPath(link.binaryPath);
+    if (realPath === null) {
+      return link;
+    }
+    const target = import_node_path2.posix.basename(realPath).replace(/\.wrapper$/, "");
+    const match = this.deps.specs.find(
+      (s) => s.systemDefaultLink !== true && s.binary === target
+    );
+    if (match === void 0) {
+      return link;
+    }
+    return (_a = await this.locate(match)) != null ? _a : link;
   }
   async findBest(preferredId) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j;
-    const pathEnv = (_b = ((_a = this.deps.env) != null ? _a : process.env).PATH) != null ? _b : "";
-    const dirs = pathEnv.split(":").filter(Boolean);
+    var _a, _b, _c, _d, _e, _f, _g, _h;
     if (preferredId !== null && preferredId !== void 0 && preferredId !== "auto" && preferredId !== "") {
       const normalizedPreferred = preferredId.toLowerCase().replace(/^terminal-choice-/, "");
       const match = this.deps.specs.find((s) => matchesPreferredTerminal(s, normalizedPreferred));
       if (match !== void 0) {
-        for (const dir of dirs) {
-          const fullPath = import_node_path2.posix.join(dir, match.binary);
-          const isExecutable = await this.deps.checkExecutable(fullPath);
-          if (isExecutable) {
-            this.verified = {
-              id: match.id,
-              displayName: match.displayName,
-              binaryPath: fullPath,
-              extra: { spec: match }
-            };
-            (_d = (_c = this.deps).debug) == null ? void 0 : _d.call(_c, `found preferred terminal: ${match.displayName} at ${fullPath}`);
-            return this.verified;
-          }
+        const found = await this.locate(match);
+        if (found !== null) {
+          this.verified = found;
+          (_b = (_a = this.deps).debug) == null ? void 0 : _b.call(_a, `found preferred terminal: ${match.displayName} at ${found.binaryPath}`);
+          return this.verified;
         }
-        (_f = (_e = this.deps).debug) == null ? void 0 : _f.call(_e, `preferred terminal ${match.displayName} not found on system`);
+        (_d = (_c = this.deps).debug) == null ? void 0 : _d.call(_c, `preferred terminal ${match.displayName} not found on system`);
       }
     }
     for (const spec of this.deps.specs) {
-      for (const dir of dirs) {
-        const fullPath = import_node_path2.posix.join(dir, spec.binary);
-        const isExecutable = await this.deps.checkExecutable(fullPath);
-        if (isExecutable) {
-          this.verified = {
-            id: spec.id,
-            displayName: spec.displayName,
-            binaryPath: fullPath,
-            extra: { spec }
-          };
-          (_h = (_g = this.deps).debug) == null ? void 0 : _h.call(_g, `found terminal: ${spec.displayName} at ${fullPath}`);
-          return this.verified;
-        }
+      const found = await this.locate(spec);
+      if (found !== null) {
+        this.verified = spec.systemDefaultLink === true ? await this.followSystemDefault(found) : found;
+        (_f = (_e = this.deps).debug) == null ? void 0 : _f.call(
+          _e,
+          `found terminal: ${this.verified.displayName} at ${this.verified.binaryPath}`
+        );
+        return this.verified;
       }
-      (_j = (_i = this.deps).debug) == null ? void 0 : _j.call(_i, `rejected terminal ${spec.displayName} (${spec.binary})`);
+      (_h = (_g = this.deps).debug) == null ? void 0 : _h.call(_g, `rejected terminal ${spec.displayName} (${spec.binary})`);
     }
     return null;
   }
 };
 
-// src/terminals/linux/launcher.ts
+// src/terminals/spawn-detached.ts
 var import_node_child_process3 = require("node:child_process");
-function launchLinuxTerminal(terminal, targetDir) {
-  var _a;
-  const spec = (_a = terminal.extra) == null ? void 0 : _a.spec;
-  const args = spec !== void 0 ? spec.buildArgs(targetDir) : [`--working-directory=${targetDir}`];
+function spawnDetached(executable, args, targetDir) {
   return new Promise((resolve) => {
     let settled = false;
     let child;
     try {
-      child = (0, import_node_child_process3.spawn)(terminal.binaryPath, args, {
+      child = (0, import_node_child_process3.spawn)(executable, args, {
         cwd: targetDir,
         env: process.env,
         shell: false,
@@ -567,15 +587,171 @@ function launchLinuxTerminal(terminal, targetDir) {
       });
     });
     child.once("spawn", () => {
-      var _a2;
+      var _a;
       if (settled) {
         return;
       }
       settled = true;
-      resolve({ ok: true, pid: (_a2 = child.pid) != null ? _a2 : 0 });
+      resolve({ ok: true, pid: (_a = child.pid) != null ? _a : 0 });
     });
     child.unref();
   });
+}
+
+// src/terminals/linux/launcher.ts
+function launchLinuxTerminal(terminal, targetDir) {
+  var _a;
+  const spec = (_a = terminal.extra) == null ? void 0 : _a.spec;
+  const args = spec !== void 0 ? spec.buildArgs(targetDir) : [`--working-directory=${targetDir}`];
+  return spawnDetached(terminal.binaryPath, args, targetDir);
+}
+
+// src/terminals/macos/finder.ts
+var import_promises2 = require("node:fs/promises");
+var import_node_fs2 = require("node:fs");
+var import_node_path3 = require("node:path");
+
+// src/terminals/macos/candidates.ts
+var MAC_OPEN_BINARY = "/usr/bin/open";
+var MAC_APP_DIRS = [
+  "/Applications",
+  "/System/Applications/Utilities",
+  "/System/Applications"
+];
+var MAC_TERMINALS = [
+  {
+    id: "terminal",
+    displayName: "Terminal",
+    appBundle: "Terminal.app",
+    // Terminal.app opens a new window at a folder passed as a document.
+    buildArgs: (appPath, dir) => ["-a", appPath, dir]
+  },
+  {
+    id: "ghostty",
+    displayName: "Ghostty",
+    appBundle: "Ghostty.app",
+    buildArgs: (appPath, dir) => ["-a", appPath, dir]
+  },
+  {
+    id: "kitty",
+    displayName: "Kitty",
+    appBundle: "kitty.app",
+    // `-n` is required: `--args` are dropped when kitty is already running.
+    buildArgs: (appPath, dir) => ["-n", "-a", appPath, "--args", "--directory", dir]
+  }
+];
+
+// src/terminals/macos/finder.ts
+async function defaultCheckExists(filePath) {
+  try {
+    await (0, import_promises2.access)(filePath, import_node_fs2.constants.F_OK);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+var MacTerminalFinder = class {
+  constructor(deps) {
+    this.verified = null;
+    this.currentPreferredId = null;
+    this.resolving = null;
+    var _a, _b, _c, _d;
+    this.deps = {
+      specs: (_a = deps == null ? void 0 : deps.specs) != null ? _a : MAC_TERMINALS,
+      appDirs: (_b = deps == null ? void 0 : deps.appDirs) != null ? _b : MAC_APP_DIRS,
+      checkExists: (_c = deps == null ? void 0 : deps.checkExists) != null ? _c : defaultCheckExists,
+      env: deps == null ? void 0 : deps.env,
+      debug: (_d = deps == null ? void 0 : deps.debug) != null ? _d : ((msg) => console.debug(`[Native Terminal Here] ${msg}`))
+    };
+  }
+  get cached() {
+    return this.verified;
+  }
+  setPreferredTerminal(id) {
+    if (this.currentPreferredId !== id) {
+      this.currentPreferredId = id;
+      this.invalidate();
+    }
+  }
+  resolve() {
+    if (this.verified !== null) {
+      return Promise.resolve(this.verified);
+    }
+    if (this.resolving !== null) {
+      return this.resolving;
+    }
+    this.resolving = this.findBest(this.currentPreferredId).finally(() => {
+      this.resolving = null;
+    });
+    return this.resolving;
+  }
+  invalidate() {
+    this.verified = null;
+  }
+  searchDirs() {
+    var _a;
+    const home = ((_a = this.deps.env) != null ? _a : process.env).HOME;
+    const dirs = [...this.deps.appDirs];
+    if (home !== void 0 && home !== "") {
+      dirs.push(import_node_path3.posix.join(home, "Applications"));
+    }
+    return dirs;
+  }
+  async locate(spec) {
+    for (const dir of this.searchDirs()) {
+      const appPath = import_node_path3.posix.join(dir, spec.appBundle);
+      if (await this.deps.checkExists(appPath)) {
+        return {
+          id: spec.id,
+          displayName: spec.displayName,
+          binaryPath: MAC_OPEN_BINARY,
+          extra: { spec, appPath }
+        };
+      }
+    }
+    return null;
+  }
+  async findBest(preferredId) {
+    var _a, _b, _c, _d, _e, _f, _g, _h;
+    if (preferredId !== null && preferredId !== "auto" && preferredId !== "") {
+      const normalizedPreferred = preferredId.toLowerCase().replace(/^terminal-choice-/, "");
+      const match = this.deps.specs.find((s) => s.id === normalizedPreferred);
+      if (match !== void 0) {
+        const found = await this.locate(match);
+        if (found !== null) {
+          this.verified = found;
+          (_b = (_a = this.deps).debug) == null ? void 0 : _b.call(_a, `found preferred terminal: ${match.displayName}`);
+          return this.verified;
+        }
+        (_d = (_c = this.deps).debug) == null ? void 0 : _d.call(_c, `preferred terminal ${match.displayName} not found on system`);
+      }
+    }
+    for (const spec of this.deps.specs) {
+      const found = await this.locate(spec);
+      if (found !== null) {
+        this.verified = found;
+        (_f = (_e = this.deps).debug) == null ? void 0 : _f.call(_e, `found terminal: ${spec.displayName}`);
+        return this.verified;
+      }
+      (_h = (_g = this.deps).debug) == null ? void 0 : _h.call(_g, `rejected terminal ${spec.displayName} (${spec.appBundle})`);
+    }
+    return null;
+  }
+};
+
+// src/terminals/macos/launcher.ts
+function launchMacTerminal(terminal, targetDir) {
+  var _a, _b;
+  const spec = (_a = terminal.extra) == null ? void 0 : _a.spec;
+  const appPath = (_b = terminal.extra) == null ? void 0 : _b.appPath;
+  if (spec === void 0 || appPath === void 0) {
+    return Promise.resolve({
+      ok: false,
+      code: "UNKNOWN",
+      error: new Error("Resolved macOS terminal is missing its app bundle path.")
+    });
+  }
+  return spawnDetached(terminal.binaryPath, spec.buildArgs(appPath, targetDir), targetDir);
 }
 
 // src/terminals/manager.ts
@@ -590,6 +766,8 @@ var TerminalManager = class {
       this.finder = new PowerShellFinder();
     } else if (this.platform === "linux") {
       this.finder = new LinuxTerminalFinder();
+    } else if (this.platform === "darwin") {
+      this.finder = new MacTerminalFinder();
     } else {
       this.finder = null;
     }
@@ -606,12 +784,14 @@ var TerminalManager = class {
       };
     } else if (this.platform === "linux") {
       this.launcher = (term, dir) => launchLinuxTerminal(term, dir);
+    } else if (this.platform === "darwin") {
+      this.launcher = (term, dir) => launchMacTerminal(term, dir);
     } else {
       this.launcher = null;
     }
   }
   isPlatformSupported() {
-    return this.platform === "win32" || this.platform === "linux";
+    return this.platform === "win32" || this.platform === "linux" || this.platform === "darwin";
   }
   getMenuTitle() {
     return "Open Terminal here";
@@ -620,10 +800,9 @@ var TerminalManager = class {
     return "Open Terminal at vault root";
   }
   setPreferredTerminal(id) {
+    var _a, _b;
     this.explicitPreferredTerminal = id;
-    if (this.finder instanceof LinuxTerminalFinder) {
-      this.finder.setPreferredTerminal(id);
-    }
+    (_b = (_a = this.finder) == null ? void 0 : _a.setPreferredTerminal) == null ? void 0 : _b.call(_a, id);
   }
   detectPreferredTerminalFromDom() {
     if (this.explicitPreferredTerminal !== null) {
@@ -641,6 +820,7 @@ var TerminalManager = class {
     return null;
   }
   async launch(targetDir, preferredTerminal) {
+    var _a, _b;
     if (!this.isPlatformSupported() || this.finder === null || this.launcher === null) {
       return { kind: "unsupported_platform", platform: this.platform };
     }
@@ -651,9 +831,7 @@ var TerminalManager = class {
       return { kind: "semicolon_in_path" };
     }
     const preferred = preferredTerminal != null ? preferredTerminal : this.detectPreferredTerminalFromDom();
-    if (this.finder instanceof LinuxTerminalFinder) {
-      this.finder.setPreferredTerminal(preferred);
-    }
+    (_b = (_a = this.finder).setPreferredTerminal) == null ? void 0 : _b.call(_a, preferred);
     const verified = await this.finder.resolve();
     if (verified === null) {
       return { kind: "not_found", platform: this.platform };
@@ -685,12 +863,18 @@ var HIDE_RIBBON_BODY_CLASSES = [
   "hide-vault-powershell-ribbon"
 ];
 var MENU_ITEM_ICON = "terminal";
-var NOTICE_UNSUPPORTED_PLATFORM = "Open Terminal Here currently supports Windows and Linux.";
+var NOTICE_UNSUPPORTED_PLATFORM = "Native Terminal Here currently supports Windows, Linux, and macOS.";
 var NOTICE_NO_VAULT_PATH = "Unable to resolve the local vault path.";
 var NOTICE_NOT_FOUND_WINDOWS = "PowerShell 7 or later was not found. Install PowerShell and restart Obsidian.";
-var NOTICE_NOT_FOUND_LINUX = "No supported terminal emulator was found. Install Ghostty (recommended), Ptyxis, or another supported terminal.";
+var NOTICE_NOT_FOUND_LINUX = "No supported terminal emulator was found. See the plugin README for the list of supported terminals.";
+var NOTICE_NOT_FOUND_MACOS = "No supported terminal app was found. Terminal.app, Ghostty, and Kitty are supported.";
 var NOTICE_START_FAILED = "Terminal could not be started. Check the developer console for details.";
 var NOTICE_SEMICOLON = "PowerShell cannot be opened for paths containing a semicolon (;).";
+var NOTICE_NOT_FOUND = {
+  win32: NOTICE_NOT_FOUND_WINDOWS,
+  linux: NOTICE_NOT_FOUND_LINUX,
+  darwin: NOTICE_NOT_FOUND_MACOS
+};
 var VaultTerminalPlugin = class extends import_obsidian2.Plugin {
   constructor(app, manifest, deps) {
     var _a, _b;
@@ -774,6 +958,7 @@ var VaultTerminalPlugin = class extends import_obsidian2.Plugin {
    * Open the native terminal at the given target directory.
    */
   async openTerminal(targetDir) {
+    var _a;
     const result = await this.terminalManager.launch(targetDir);
     switch (result.kind) {
       case "success":
@@ -788,12 +973,10 @@ var VaultTerminalPlugin = class extends import_obsidian2.Plugin {
         new import_obsidian2.Notice(NOTICE_SEMICOLON);
         return;
       case "not_found":
-        new import_obsidian2.Notice(
-          result.platform === "win32" ? NOTICE_NOT_FOUND_WINDOWS : NOTICE_NOT_FOUND_LINUX
-        );
+        new import_obsidian2.Notice((_a = NOTICE_NOT_FOUND[result.platform]) != null ? _a : NOTICE_NOT_FOUND_LINUX);
         return;
       case "failed":
-        console.error("[Open Terminal Here] launch failed", result.error);
+        console.error("[Native Terminal Here] launch failed", result.error);
         new import_obsidian2.Notice(NOTICE_START_FAILED);
         return;
     }
@@ -802,6 +985,7 @@ var VaultTerminalPlugin = class extends import_obsidian2.Plugin {
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   NOTICE_NOT_FOUND_LINUX,
+  NOTICE_NOT_FOUND_MACOS,
   NOTICE_NOT_FOUND_WINDOWS,
   NOTICE_NO_VAULT_PATH,
   NOTICE_SEMICOLON,

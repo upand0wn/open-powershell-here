@@ -2,7 +2,7 @@
 
 本文件记录本项目（Obsidian 插件 `open-powershell-here`，显示名 **Native Terminal Here**）的核心约束。任何 Agent 在继续本项目前必须完整阅读并遵守本文件；如与本文件冲突，以本文件为准；如与用户最新明确指示冲突，以用户指示为准并在提交前说明。
 
-最后核对：2026-09-26（v0.6.0）。
+最后核对：2026-10-03（v0.6.0 之后，macOS 支持与 Kitty 选项尚未发版）。
 
 ## 项目本质
 
@@ -11,13 +11,14 @@
   2. **单文件夹右键菜单**（Obsidian 左侧文件列表中右键单个文件夹或普通文件，菜单项 **`Open Terminal here`**、图标 `terminal`）：文件夹以自身路径打开，文件以其所在文件夹打开。
 - 终端按平台分派（`src/terminals/manager.ts`）：
   - **Windows**：PowerShell 7+（`pwsh.exe`），默认以 `wt.exe`（Windows Terminal）作为窗口宿主；
-  - **Linux**：自动检测已安装终端，优先级为 `ghostty → xdg-terminal-exec → alacritty → kitty → wezterm → konsole → ptyxis → gnome-terminal → kgx → xfce4-terminal → foot → x-terminal-emulator`。Ubuntu 25.10+/26.04 通过 `xdg-terminal-exec --dir=<dir>` 跟随系统默认终端（默认 Ptyxis）。
+  - **Linux**：**不偏向任何终端，优先使用系统默认终端**（2026-10-03 用户明确指示，覆盖此前的 Ghostty 优先）。顺序为 `xdg-terminal-exec → x-terminal-emulator → alacritty → foot → ghostty → gnome-terminal → kgx → kitty → konsole → ptyxis → wezterm → xfce4-terminal`（前两项为系统默认机制，其余按 id 字母顺序）。`x-terminal-emulator` 命中时 finder 用 `realpath` 跟随链接（去掉 `.wrapper` 后缀），若指向候选列表中的终端则改用该终端自身的工作目录参数启动，否则仅靠 `cwd`。Ubuntu 25.10+/26.04 通过 `xdg-terminal-exec --dir=<dir>` 跟随系统默认终端（默认 Ptyxis）。
+  - **macOS**（2026-10-03 用户明确要求新增，**未在真实 Mac 上验证**）：通过 `/usr/bin/open` 启动应用包，候选顺序 `Terminal.app → Ghostty → Kitty`；Auto-detect 使用系统自带 Terminal.app，Ghostty / Kitty 仅在 Preferred Terminal 选中且已安装时使用。README 中“未在 macOS 验证”的声明在用户确认实机通过前**不得删除**。
 - **Ribbon 按钮只允许隐藏、不允许移除**（2026-08-10 用户明确指示）：
   - `styles.css` 的 `@settings` 块只保留**两个扁平设置项**：**Hide the ribbon button**（`class-toggle`）与 **Preferred Terminal**（`class-select`），**不得添加分组标题**（2026-09-26 用户明确指示，此前的 “Ribbon Button” / “Terminal Selection (Linux)” 两个 heading 已删除）。
   - **关键机制（踩坑后确认，读 Style Settings 源码验证）**：`class-toggle` 加到 `<body>` 的类名是**设置项 `id`**（`SettingsManager.ts` 中 `document.body.classList.add(setting.id)`；`addClass` 属性已被新版 Style Settings 忽略）。因此 `id` 必须等于想要匹配的 body 类名，CSS 选择器与 `main.ts` 的 `HIDE_RIBBON_BODY_CLASSES` 常量必须保持一致。
   - **双重保障**：CSS 双选择器（`.vault-terminal-ribbon` / `.vault-powershell-ribbon` + tooltip `aria-label` 匹配，`display: none`）；同时 `main.ts` 用 `MutationObserver` 监听 body class 变化，以内联样式强制隐藏/恢复按钮（不依赖任何 CSS/DOM 假设）。
   - 安装文档必须要求复制 `styles.css`。不得删除 Ribbon 入口，不得把隐藏做成硬编码（必须可切换）。
-- **Preferred Terminal 选项固定为 `Auto-detect` / `Ghostty` / `Ptyxis` 三项**（2026-09-26 用户明确指示）；代码中的其他终端候选保留用于自动检测与回退，**所选终端未安装时自动回退到候选顺序**。
+- **Preferred Terminal 选项固定为 `Auto-detect` / `Ghostty` / `Kitty` / `Ptyxis` 四项**（2026-09-26 用户指示三项，2026-10-03 用户明确要求加入 Kitty）；代码中的其他终端候选保留用于自动检测与回退，**所选终端未安装时自动回退到候选顺序**。
 - 仍禁止：命令面板命令、快捷键、设置页、批量（多选）右键菜单（`files-menu`）、内嵌终端、自动执行脚本。
 - 插件 ID：`open-powershell-here`（**安装/更新键，永不更改**；2026-08-10 与显示名/仓库名统一，此前为 `vault-powershell`）；显示名 **Native Terminal Here**；主类：`VaultTerminalPlugin`（内部实现名，不改）；当前版本 `0.6.0`；仓库 **Public**；默认分支 `main`。
 - 内部 CSS hook class（`vault-terminal-ribbon`、`vault-powershell-ribbon`、`hide-vault-terminal-ribbon`、`hide-vault-powershell-ribbon`）与插件 id 无关，保持原样（无用户可见影响）。
@@ -44,7 +45,11 @@
 
 11. 只启动候选列表中的终端或系统默认终端；参数必须由 `buildArgs` 生成并作为独立参数传递（如 `--working-directory=<dir>`、`xdg-terminal-exec --dir=<dir>`、Ptyxis 的 `--new-window --working-directory=<dir>`），不得改用 shell 字符串或包装脚本。
 12. Linux finder 扫描 POSIX 风格的 `PATH` 时必须使用 `posix.join`（在 Windows 上跑测试也必须得到 POSIX 路径）。
-13. 不得把 `xdg-terminal-exec` 移出候选列表前两位（Ghostty 之后）、不得破坏“跟随系统默认终端”的行为，除非用户明确要求。
+13. `xdg-terminal-exec` 必须保持候选列表第一位、`x-terminal-emulator` 第二位，其余终端按 id 字母顺序排列；不得把任何具体终端排到系统默认机制之前，不得在文案中“推荐”某个终端，不得破坏“跟随系统默认终端”的行为，除非用户明确要求。
+
+### macOS
+
+14a. 只通过 `/usr/bin/open` 启动候选列表中的应用包（`open` 仅作为启动器，类比 Windows 的 `wt.exe`）；参数由 `buildArgs(appPath, dir)` 生成并作为独立参数传递；不得使用 `osascript` / AppleScript、shell 字符串或包装脚本。应用包只在 `/Applications`、`/System/Applications/Utilities`、`/System/Applications`、`~/Applications` 中做存在性检查，不搜索整个磁盘。
 
 ### 右键菜单
 
@@ -66,7 +71,11 @@
 - `/usr/bin/x-terminal-emulator` → `/etc/alternatives/x-terminal-emulator` → `/usr/bin/ptyxis`；旧版插件仅经该兜底启动 ptyxis，不带工作目录参数，可能落在 home。
 - `xdg-terminal-exec`（`/usr/bin/xdg-terminal-exec`）是 Ubuntu 25.04+ 的默认终端解析机制：`--print-id` 输出 `org.gnome.Ptyxis.desktop:new-window`，`--print-cmd --dir=<dir>` 输出 `ptyxis --new-window --working-directory <dir>`；系统默认配置位于 `/usr/share/xdg-terminal-exec/ubuntu-xdg-terminals.list` 或 `~/.config/ubuntu-xdg-terminals.list`。
 - 实测（与插件 launcher 相同参数）`spawn('/usr/bin/xdg-terminal-exec', ['--dir=<dir>'], { cwd, detached: true, stdio: 'ignore' })` 可正常启动。
-- Linux 人工验收清单见 `MANUAL_TESTS.md` 的 L1–L8；未执行项不得伪造为通过。
+- Linux 人工验收清单见 `MANUAL_TESTS.md` 的 L1–L11；未执行项不得伪造为通过。
+
+### macOS（2026-10-03，无实机）
+
+- 全部实现基于文档与通用经验，**没有任何实机事实**；人工验收清单见 `MANUAL_TESTS.md` 的 M1–M6，全部未执行。
 
 ## 质量与流程
 
@@ -100,17 +109,17 @@
   - 目录从**仓库默认分支的 `manifest.json`** 读取最新版本，安装/更新时从 **tag 与 manifest 版本一致的 GitHub Release** 拉取三件套；README 从仓库默认分支展示。因此**发完 Release 即自动生效**（目录站点展示可能有数小时延迟，用户端 Obsidian 直接读仓库 manifest + release，无需等待）；
   - 列表搜索使用的 `name` / `description` 等元数据在 **community.obsidian.md** 后台用 Obsidian 账号登录后编辑，**不会**自动跟随仓库 manifest；首次提交/审核状态也在该站查看；
   - “This plugin has not been manually reviewed by Obsidian staff” 是官方审核状态展示，不影响安装与更新；
-  - 目录的自动审查会对 `node:fs`（Linux finder 检查终端可执行文件）与 `child_process`（启动终端进程）报告**能力警告**：这是插件核心功能所必需，**不得为消除警告而移除功能**；必须在 `README.md` / `README.zh.md` 的 “Permissions & Security / 权限与安全” 章节如实说明；
+  - 目录的自动审查会对 `node:fs`（Linux finder 检查终端可执行文件、macOS finder 检查应用包是否存在）与 `child_process`（启动终端进程）报告**能力警告**：这是插件核心功能所必需，**不得为消除警告而移除功能**；必须在 `README.md` / `README.zh.md` 的 “Permissions & Security / 权限与安全” 章节如实说明；
   - 社区公告（论坛 Share & showcase、Discord `#updates`）可选，不属于发版流程必选项。
 
 ## 参考文件
 
-- `MANUAL_TESTS.md`：真实验收清单（Windows 清单 + Linux/Ubuntu L1–L8）与平台行为发现；未执行项保持“未执行”。
+- `MANUAL_TESTS.md`：真实验收清单（Windows 清单 + Linux/Ubuntu L1–L11 + macOS M1–M6）与平台行为发现；未执行项保持“未执行”。
 - `README.md`（英文，默认）/ `README.zh.md`（简体中文）：用户文档，必须同步（两文件仅在语言与互链上不同）。
 - `AGENTS.local.md`：维护者本地运维指引（deploy key、推送/发布命令），**不提交**（已 gitignore），仅本机工作区存在。
 - `.github/workflows/ci.yml`：CI（`windows-latest` + `ubuntu-latest` 矩阵；lint/typecheck/test/build + `main.js` 同步检查）。
 - `.github/workflows/release.yml`：Release workflow（tag push 或 workflow_dispatch；verify + attestation + 上传三件套）。
-- `src/`：`main.ts`（生命周期、Ribbon、右键菜单、Notice）、`vault-path.ts`（路径解析）、`terminals/manager.ts`（平台分派、偏好终端）、`terminals/types.ts`、`terminals/windows/{candidates,version-probe,launcher,finder,types}.ts`、`terminals/linux/{candidates,finder,launcher,types}.ts`。
+- `src/`：`main.ts`（生命周期、Ribbon、右键菜单、Notice）、`vault-path.ts`（路径解析）、`terminals/manager.ts`（平台分派、偏好终端）、`terminals/types.ts`、`terminals/windows/{candidates,version-probe,launcher,finder,types}.ts`、`terminals/linux/{candidates,finder,launcher,types}.ts`、`terminals/macos/{candidates,finder,launcher,types}.ts`、`terminals/spawn-detached.ts`（Linux / macOS 共用的分离进程启动）。
 - `styles.css`：Style Settings `@settings` 块（Hide the ribbon button + Preferred Terminal）与隐藏 Ribbon 的 CSS。
 - `tests/`：Vitest 测试；`tests/mocks/obsidian.ts` 是 `obsidian` 包（仅类型）的测试替身（见 `vitest.config.ts` 别名）。
 - `scripts/install-test.mjs`：`npm run install:test`，把构建产物装入 `.test-vault` 并幂等注册到 `community-plugins.json`。

@@ -11,7 +11,7 @@ settings:
     -
         id: terminal-choice
         title: Preferred Terminal
-        description: 'Choose which terminal emulator to use on Linux. If the selected terminal is not installed, other supported terminals are still detected automatically.'
+        description: 'Choose which terminal to use on Linux and macOS. If the selected terminal is not installed, other supported terminals are still detected automatically. Ptyxis is Linux only.'
         type: class-select
         default: terminal-choice-auto
         options:
@@ -21,6 +21,9 @@ settings:
             -
                 label: 'Ghostty'
                 value: terminal-choice-ghostty
+            -
+                label: 'Kitty'
+                value: terminal-choice-kitty
             -
                 label: 'Ptyxis'
                 value: terminal-choice-ptyxis

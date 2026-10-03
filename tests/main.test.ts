@@ -12,6 +12,7 @@ import {
 import VaultTerminalPlugin, {
   type PluginDeps,
   NOTICE_NOT_FOUND_LINUX,
+  NOTICE_NOT_FOUND_MACOS,
   NOTICE_NOT_FOUND_WINDOWS,
   NOTICE_NO_VAULT_PATH,
   NOTICE_SEMICOLON,
@@ -197,7 +198,7 @@ describe('VaultTerminalPlugin', () => {
     });
 
     it('does not add menu item on unsupported platforms', () => {
-      const plugin = makePlugin({ platform: 'darwin' });
+      const plugin = makePlugin({ platform: 'freebsd' });
       plugin.onload();
       const menu = rightClick(new TFolder('src'));
       expect(menu.items).toHaveLength(0);
@@ -214,7 +215,7 @@ describe('VaultTerminalPlugin', () => {
 
   describe('notices and error reporting', () => {
     it('notifies on unsupported platform launch', async () => {
-      const plugin = makePlugin({ platform: 'darwin' });
+      const plugin = makePlugin({ platform: 'freebsd' });
       await plugin.openTerminal('/some/path');
       expect(state.notices).toContain(NOTICE_UNSUPPORTED_PLATFORM);
     });
@@ -245,6 +246,16 @@ describe('VaultTerminalPlugin', () => {
       const plugin = makePlugin({ platform: 'linux', terminalManager: manager });
       await plugin.openTerminal('/home/user/vault');
       expect(state.notices).toContain(NOTICE_NOT_FOUND_LINUX);
+    });
+
+    it('adds the menu item and notifies when no terminal is found on macOS', async () => {
+      const finder = makeMockFinder(null);
+      const manager = new TerminalManager({ platform: 'darwin', finder });
+      const plugin = makePlugin({ platform: 'darwin', terminalManager: manager });
+      plugin.onload();
+      expect(rightClick(new TFolder('src')).items).toHaveLength(1);
+      await plugin.openTerminal('/Users/me/vault');
+      expect(state.notices).toContain(NOTICE_NOT_FOUND_MACOS);
     });
 
     it('notifies when launch fails with generic error', async () => {

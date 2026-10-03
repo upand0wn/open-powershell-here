@@ -26,16 +26,24 @@ const HIDE_RIBBON_BODY_CLASSES = [
 const MENU_ITEM_ICON = 'terminal';
 
 export const NOTICE_UNSUPPORTED_PLATFORM =
-  'Open Terminal Here currently supports Windows and Linux.';
+  'Native Terminal Here currently supports Windows, Linux, and macOS.';
 export const NOTICE_NO_VAULT_PATH = 'Unable to resolve the local vault path.';
 export const NOTICE_NOT_FOUND_WINDOWS =
   'PowerShell 7 or later was not found. Install PowerShell and restart Obsidian.';
 export const NOTICE_NOT_FOUND_LINUX =
-  'No supported terminal emulator was found. Install Ghostty (recommended), Ptyxis, or another supported terminal.';
+  'No supported terminal emulator was found. See the plugin README for the list of supported terminals.';
+export const NOTICE_NOT_FOUND_MACOS =
+  'No supported terminal app was found. Terminal.app, Ghostty, and Kitty are supported.';
 export const NOTICE_START_FAILED =
   'Terminal could not be started. Check the developer console for details.';
 export const NOTICE_SEMICOLON =
   'PowerShell cannot be opened for paths containing a semicolon (;).';
+
+const NOTICE_NOT_FOUND: Record<string, string> = {
+  win32: NOTICE_NOT_FOUND_WINDOWS,
+  linux: NOTICE_NOT_FOUND_LINUX,
+  darwin: NOTICE_NOT_FOUND_MACOS,
+};
 
 /** Test seam: injected dependencies (platform, terminal manager). */
 export interface PluginDeps {
@@ -153,14 +161,10 @@ export default class VaultTerminalPlugin extends Plugin {
         new Notice(NOTICE_SEMICOLON);
         return;
       case 'not_found':
-        new Notice(
-          result.platform === 'win32'
-            ? NOTICE_NOT_FOUND_WINDOWS
-            : NOTICE_NOT_FOUND_LINUX,
-        );
+        new Notice(NOTICE_NOT_FOUND[result.platform] ?? NOTICE_NOT_FOUND_LINUX);
         return;
       case 'failed':
-        console.error('[Open Terminal Here] launch failed', result.error);
+        console.error('[Native Terminal Here] launch failed', result.error);
         new Notice(NOTICE_START_FAILED);
         return;
     }

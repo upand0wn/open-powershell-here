@@ -13,4 +13,9 @@ export interface LinuxTerminalSpec {
    * `xfce4`) that predate the full terminal ids.
    */
   readonly aliases?: readonly string[];
+  /**
+   * The binary is a link to the system default terminal (Debian
+   * alternatives); the finder follows it to identify the real terminal.
+   */
+  readonly systemDefaultLink?: boolean;
 }

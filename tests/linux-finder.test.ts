@@ -92,19 +92,59 @@ describe('LinuxTerminalFinder', () => {
     expect(resolved?.binaryPath).toBe('/usr/bin/ghostty');
   });
 
-  it('lists all installed terminals on the system', async () => {
-    const checkExecutable = vi.fn().mockImplementation(async (path: string) => {
-      return path === '/usr/bin/ghostty' || path === '/usr/bin/konsole';
+  describe('system default terminal', () => {
+    const DEFAULT_SPECS: LinuxTerminalSpec[] = [
+      { id: 'xdg-terminal-exec', displayName: 'System Default', binary: 'xdg-terminal-exec', buildArgs: (d) => [d] },
+      {
+        id: 'x-terminal-emulator',
+        displayName: 'Terminal',
+        binary: 'x-terminal-emulator',
+        buildArgs: () => [],
+        systemDefaultLink: true,
+      },
+      { id: 'ghostty', displayName: 'Ghostty', binary: 'ghostty', buildArgs: (d) => [d] },
+      { id: 'gnome-terminal', displayName: 'GNOME Terminal', binary: 'gnome-terminal', buildArgs: (d) => [d] },
+    ];
+
+    function makeFinder(installed: string[], realPath: string | null): LinuxTerminalFinder {
+      return new LinuxTerminalFinder({
+        specs: DEFAULT_SPECS,
+        checkExecutable: async (path) => installed.includes(path),
+        resolveRealPath: async () => realPath,
+        env: { PATH: '/usr/bin' },
+        debug: () => {},
+      });
+    }
+
+    it('uses xdg-terminal-exec ahead of any installed terminal', async () => {
+      const finder = makeFinder(
+        ['/usr/bin/xdg-terminal-exec', '/usr/bin/x-terminal-emulator', '/usr/bin/ghostty'],
+        '/usr/bin/ghostty',
+      );
+      expect((await finder.resolve())?.id).toBe('xdg-terminal-exec');
     });
 
-    const finder = new LinuxTerminalFinder({
-      specs: TEST_SPECS,
-      checkExecutable,
-      env: { PATH: '/usr/bin' },
+    it('follows x-terminal-emulator to a supported terminal (Debian wrapper)', async () => {
+      const finder = makeFinder(
+        ['/usr/bin/x-terminal-emulator', '/usr/bin/ghostty', '/usr/bin/gnome-terminal'],
+        '/usr/bin/gnome-terminal.wrapper',
+      );
+      const resolved = await finder.resolve();
+      expect(resolved?.id).toBe('gnome-terminal');
+      expect(resolved?.binaryPath).toBe('/usr/bin/gnome-terminal');
     });
 
-    const installed = await finder.listInstalledTerminals();
-    expect(installed.map((i) => i.spec.id)).toEqual(['ghostty', 'konsole']);
+    it('launches x-terminal-emulator itself when its target is unknown or unresolvable', async () => {
+      const installed = ['/usr/bin/x-terminal-emulator', '/usr/bin/ghostty'];
+      expect((await makeFinder(installed, '/usr/bin/xterm').resolve())?.id).toBe('x-terminal-emulator');
+      expect((await makeFinder(installed, null).resolve())?.id).toBe('x-terminal-emulator');
+    });
+
+    it('still honours an explicitly preferred terminal over the system default', async () => {
+      const finder = makeFinder(['/usr/bin/xdg-terminal-exec', '/usr/bin/ghostty'], null);
+      finder.setPreferredTerminal('terminal-choice-ghostty');
+      expect((await finder.resolve())?.id).toBe('ghostty');
+    });
   });
 
   it('caches the resolved terminal and does not re-scan until invalidated', async () => {

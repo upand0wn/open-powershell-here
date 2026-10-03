@@ -20,6 +20,8 @@ export interface TerminalFinder {
   readonly cached: ResolvedTerminal | null;
   resolve(): Promise<ResolvedTerminal | null>;
   invalidate(): void;
+  /** Optional: honour the user's preferred terminal (Style Settings). */
+  setPreferredTerminal?(id: string | null): void;
 }
 
 /** Common interface for platform-specific terminal launchers. */

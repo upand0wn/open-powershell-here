@@ -1,7 +1,7 @@
 {
   "name": "native-terminal-here",
   "version": "0.6.0",
-  "description": "Open a native terminal (PowerShell on Windows, Ghostty / other terminals on Linux) at the root or any folder/file of the current Obsidian vault.",
+  "description": "Open a native terminal (PowerShell on Windows, Ghostty / Ptyxis / other terminals on Linux, Terminal on macOS) at the root or any folder/file of the current Obsidian vault.",
   "private": true,
   "license": "MIT",
   "main": "main.js",

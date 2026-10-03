@@ -2,14 +2,18 @@ import { describe, expect, it } from 'vitest';
 import { LINUX_TERMINALS } from '../src/terminals/linux/candidates';
 
 describe('LINUX_TERMINALS', () => {
-  it('places Ghostty as the highest priority terminal', () => {
-    expect(LINUX_TERMINALS[0].id).toBe('ghostty');
-    expect(LINUX_TERMINALS[0].displayName).toBe('Ghostty');
-    expect(LINUX_TERMINALS[0].binary).toBe('ghostty');
+  it('places the system default terminal mechanisms first', () => {
+    expect(LINUX_TERMINALS[0].id).toBe('xdg-terminal-exec');
+    expect(LINUX_TERMINALS[1].id).toBe('x-terminal-emulator');
+    expect(LINUX_TERMINALS[1].systemDefaultLink).toBe(true);
   });
 
-  it('places the system default terminal right after Ghostty', () => {
-    expect(LINUX_TERMINALS[1].id).toBe('xdg-terminal-exec');
+  it('favours no individual terminal: the rest are in alphabetical order', () => {
+    const rest = LINUX_TERMINALS.slice(2).map((t) => t.id);
+    expect(rest).toEqual([...rest].sort());
+    expect(rest).toContain('ghostty');
+    expect(rest).toContain('kitty');
+    expect(rest).toContain('ptyxis');
   });
 
   it('builds proper working directory argument for Ghostty', () => {
@@ -84,12 +88,6 @@ describe('LINUX_TERMINALS', () => {
     expect(kgx?.buildArgs('/home/user/vault')).toEqual([
       '--working-directory=/home/user/vault',
     ]);
-  });
-
-  it('prefers Ptyxis over GNOME Terminal on Ubuntu', () => {
-    const ids = LINUX_TERMINALS.map((t) => t.id);
-    expect(ids.indexOf('ptyxis')).toBeGreaterThan(-1);
-    expect(ids.indexOf('ptyxis')).toBeLessThan(ids.indexOf('gnome-terminal'));
   });
 
   it('keeps legacy aliases for the preferred-terminal setting', () => {
