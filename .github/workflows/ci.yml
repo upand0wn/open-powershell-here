@@ -10,7 +10,7 @@ jobs:
   verify:
     strategy:
       matrix:
-        os: [windows-latest, ubuntu-latest]
+        os: [windows-latest, ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
@@ -30,3 +30,7 @@ jobs:
 
       - name: Ensure main.js is in sync with the source
         run: git diff --exit-code -- main.js
+
+      - name: Smoke test (open the real Terminal.app)
+        if: runner.os == 'macOS'
+        run: node scripts/smoke-macos.mjs
