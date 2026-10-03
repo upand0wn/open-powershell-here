@@ -20,7 +20,7 @@
   - 安装文档必须要求复制 `styles.css`。不得删除 Ribbon 入口，不得把隐藏做成硬编码（必须可切换）。
 - **Preferred Terminal 选项固定为 `Auto-detect` / `Ghostty` / `Kitty` / `Ptyxis` 四项**（2026-09-26 用户指示三项，2026-10-03 用户明确要求加入 Kitty）；代码中的其他终端候选保留用于自动检测与回退，**所选终端未安装时自动回退到候选顺序**。
 - 仍禁止：命令面板命令、快捷键、设置页、批量（多选）右键菜单（`files-menu`）、内嵌终端、自动执行脚本。
-- 插件 ID：`open-powershell-here`（**安装/更新键，永不更改**；2026-08-10 与显示名/仓库名统一，此前为 `vault-powershell`）；显示名 **Native Terminal Here**；主类：`VaultTerminalPlugin`（内部实现名，不改）；当前版本 `0.7.0`；仓库 **Public**；默认分支 `main`。
+- 插件 ID：`open-powershell-here`（**安装/更新键，永不更改**；2026-08-10 与显示名/仓库名统一，此前为 `vault-powershell`）；显示名 **Native Terminal Here**；主类：`VaultTerminalPlugin`（内部实现名，不改）；当前版本 `0.7.1`；仓库 **Public**；默认分支 `main`。
 - 内部 CSS hook class（`vault-terminal-ribbon`、`vault-powershell-ribbon`、`hide-vault-terminal-ribbon`、`hide-vault-powershell-ribbon`）与插件 id 无关，保持原样（无用户可见影响）。
 
 ## 硬性约束（不可违反）
