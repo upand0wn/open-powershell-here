@@ -254,7 +254,7 @@ function spawnDirect(verified, targetDir) {
 function spawnHosted(verified, targetDir) {
   return spawnPwsh(
     WINDOWS_TERMINAL,
-    ["-w", "0", verified.path, "-WorkingDirectory", targetDir],
+    ["-w", "0", "-d", targetDir, verified.path, "-WorkingDirectory", targetDir],
     targetDir,
     "ignore"
   );

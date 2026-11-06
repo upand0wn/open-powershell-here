@@ -66,6 +66,7 @@ context-menu entry manually verified (core items); edge items pending
 | 32 | **插件重载无重复菜单项**（新增） | 禁用→启用插件（或重载 vault），再右键文件夹 | 菜单中仍只有一项 `Open PowerShell here`（无重复项） | 未执行 |
 | 33 | **Ribbon 与右键交替使用**（新增） | 依次点击 Ribbon、右键文件夹点击菜单项、再点 Ribbon | 每次打开一个新会话窗口，工作目录分别正确 | 未执行 |
 | 34 | **Style Settings 隐藏 Ribbon**（新增） | 安装 Style Settings 插件 → 设置 → Style Settings → Open PowerShell Here → 打开 **Hide the ribbon button** | 左侧 Ribbon 按钮消失；关闭开关后按钮恢复；右键菜单入口不受影响 | **通过**（2026-08-10 用户实测） |
+| 35 | **覆盖 Windows Terminal 失效起始目录** | Windows Terminal 默认设置及所用 profile 的 `startingDirectory` 指向不存在的目录；在 `.test-vault` 点击 Ribbon，再右键含空格/中文的子文件夹打开终端 | 两个入口均正常启动，无 `0x8007010b`；`Get-Location` 分别为 vault 根目录和目标子文件夹 | 未执行（自动化测试检查 `-d` 与 `-WorkingDirectory` 分别传参；仍需真实 GUI 验收） |
 
 ## 平台行为发现（脚本化实验，2026-08-06）
 
@@ -89,7 +90,7 @@ context-menu entry manually verified (core items); edge items pending
 ### 结论与当前代码状态
 
 - **当前实现（2026-08-09 起）**：两个入口共用同一条启动流程——Ribbon 传 vault 根目录，单文件夹右键菜单（`file-menu` 事件，`Open PowerShell here`，`terminal` 图标）在点击时解析目标文件夹绝对路径（`FileSystemAdapter.getFullPath`，根文件夹用 `getBasePath()`）。
-- 正式会话默认通过 `spawn('wt.exe', ['-w','0', verifiedPwsh, '-WorkingDirectory', targetDir], { cwd: targetDir, stdio: 'ignore', windowsHide: false, detached: false, shell: false })` 启动——Windows Terminal 只作为控制台窗口宿主，让 pwsh 获得真实控制台句柄（实测 `IsInputRedirected=False`，完全可交互）。`wt.exe` 缺失（ENOENT）时回退直连 `spawn(pwsh, …, stdio:'inherit')`。
+- 正式会话默认通过 `spawn('wt.exe', ['-w','0', '-d', targetDir, verifiedPwsh, '-WorkingDirectory', targetDir], { cwd: targetDir, stdio: 'ignore', windowsHide: false, detached: false, shell: false })` 启动——Windows Terminal 只作为控制台窗口宿主，让 pwsh 获得真实控制台句柄（旧参数方案已实测 `IsInputRedirected=False`，完全可交互）。2026-11-06 新增宿主 `-d` 参数，避免其配置的失效起始目录在 pwsh 启动前触发 `0x8007010b`；新参数方案的 GUI 验收见 #35。`wt.exe` 缺失（ENOENT）时回退直连 `spawn(pwsh, …, stdio:'inherit')`。
 - **分号路径（2026-08-09 用户批准的变更）**：目标路径（vault 根目录或右键文件夹）含 `;` 时**不再回退直连**（wt 会拆分分号；直连在无控制台环境下不可靠），而是**不创建任何进程**（含隐藏版本探测），显示 Notice：`PowerShell cannot be opened for paths containing a semicolon (;).`。`launcher.ts` 内还有一道防御性拒绝，保证任何情况下都不会为 `;` 路径创建进程。
 - **变更原因**：v0.1 直连方案在 Explorer 启动的 Obsidian（无控制台 GUI 父进程）下被用户实测确认闪退；根因是 libuv 恒设 `STARTF_USESTDHANDLES` 并显式传无效句柄，Node `spawn` 不存在“让 OS 自动附加新控制台句柄”的模式。
 - **授权范围**：用户 2026-08-08 明确接受“放宽约束换取可靠新窗口”的建议；变更仅限于把 `wt.exe` 作为窗口宿主（不代理/监听/记录 I/O，目标路径仍为独立 `-WorkingDirectory` 参数）。`cmd.exe`、`powershell.exe`、`conhost.exe`、`start`、`shell:true` 等仍被禁止。

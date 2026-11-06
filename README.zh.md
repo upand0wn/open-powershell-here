@@ -17,6 +17,8 @@
 | **Linux** | **系统默认终端** | 不偏向任何终端；例如 Ubuntu 25.10+ / 26.04 自动使用默认终端（Ptyxis） |
 | **macOS** | **Terminal.app**（可选 Ghostty / Kitty） | ⚠️ **未在真实 Mac 上验证**，见下方说明 |
 
+Windows 下目标文件夹同时传给 Windows Terminal（`-d`）与 PowerShell（`-WorkingDirectory`），覆盖 Windows Terminal 配置的起始目录，即使该目录已不存在也不受影响。旧版插件遇到 `0x8007010b` / `Could not access starting directory` 时，可先在 Windows Terminal 设置中将失效的起始目录改为现有文件夹。
+
 Linux 下插件优先使用系统的默认终端（通过 `xdg-terminal-exec`，或 Debian/Ubuntu 的 `x-terminal-emulator` 替代项）。只有在无法确定默认终端时，才回退到 Alacritty、Foot、Ghostty、GNOME Terminal、GNOME Console、Kitty、Konsole、Ptyxis、WezTerm、XFCE4 Terminal 中第一个已安装的终端（按字母顺序，不偏向任何一个）。如需固定使用某一个，可在 **Style Settings → Preferred Terminal** 中选择。
 
 > ⚠️ **macOS 支持未经实机验证。** macOS 代码路径仅有自动化测试覆盖，**没有在真实 Mac 上验证过效果**。默认在目标目录打开系统自带的 Terminal.app；在 **Style Settings → Preferred Terminal** 中选择 Ghostty 或 Kitty 且其安装在 `/Applications` 或 `~/Applications` 时，则使用所选终端。如果无法正常工作，欢迎[提交 issue](https://github.com/upand0wn/open-powershell-here/issues)。

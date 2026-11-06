@@ -49,14 +49,14 @@ describe('launchInteractive — hosted mode via Windows Terminal', () => {
     spawnMock.mockReset();
   });
 
-  it('spawns wt.exe with the verified pwsh and the vault path as its own -WorkingDirectory argument', async () => {
+  it('overrides the Windows Terminal starting directory before launching pwsh at the target', async () => {
     mockSpawns(['spawn']);
     const outcome = await launchInteractive({ path: PWSH, majorVersion: 7 }, VAULT);
     expect(outcome).toEqual({ ok: true, pid: 4242 });
     expect(spawnMock).toHaveBeenCalledTimes(1);
     const [file, args, options] = calls()[0];
     expect(file).toBe('wt.exe');
-    expect(args).toEqual(['-w', '0', PWSH, '-WorkingDirectory', VAULT]);
+    expect(args).toEqual(['-w', '0', '-d', VAULT, PWSH, '-WorkingDirectory', VAULT]);
     expect(options.cwd).toBe(VAULT);
     expect(options.shell).toBe(false);
     expect(options.windowsHide).toBe(false);

@@ -20,9 +20,11 @@ function spawnHosted(
   verified: VerifiedPowerShell,
   targetDir: string,
 ): Promise<LaunchOutcome> {
+  // Override the host profile's starting directory before it creates pwsh.
+  // PowerShell's -WorkingDirectory cannot fix an invalid host directory.
   return spawnPwsh(
     WINDOWS_TERMINAL,
-    ['-w', '0', verified.path, '-WorkingDirectory', targetDir],
+    ['-w', '0', '-d', targetDir, verified.path, '-WorkingDirectory', targetDir],
     targetDir,
     'ignore',
   );
